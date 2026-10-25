@@ -1,0 +1,1349 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tiverton Fleet Desk</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #172b2a;
+      --muted: #71817f;
+      --line: #e5ebe8;
+      --canvas: #f5f7f5;
+      --white: #fff;
+      --green: #147d62;
+      --green-dark: #105f4c;
+      --green-pale: #e8f4ef;
+      --amber: #a56814;
+      --amber-pale: #fbf1dd;
+      --red: #b4443d;
+      --red-pale: #f9e9e7;
+      --blue: #426c9a;
+      --blue-pale: #eaf0f7;
+      --shadow: 0 10px 30px rgba(22, 51, 42, .08);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--canvas);
+      color: var(--ink);
+      font: 14px/1.45 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    button, input, select, textarea { font: inherit; }
+    button { cursor: pointer; }
+    .app { min-height: 100vh; display: grid; grid-template-columns: 248px minmax(0, 1fr); }
+    .sidebar {
+      position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column;
+      padding: 24px 16px 18px; background: #102f2b; color: #dce9e5;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; padding: 0 8px 28px; }
+    .brand-mark {
+      display: grid; place-items: center; width: 38px; height: 38px; border-radius: 12px;
+      background: #d5eee3; color: #125b47; font-weight: 850; letter-spacing: -.06em;
+    }
+    .brand strong { display: block; color: #fff; font-size: 14px; letter-spacing: -.02em; }
+    .brand span { display: block; color: #a3beb5; margin-top: 2px; font-size: 11px; }
+    .nav-label { padding: 10px 10px 8px; color: #88a89e; font-size: 10px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+    .nav { display: grid; gap: 4px; }
+    .nav button {
+      display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 12px;
+      color: #c1d4cd; background: transparent; border: 0; border-radius: 9px; text-align: left;
+      transition: background .15s, color .15s;
+    }
+    .nav button:hover { background: #1c403a; color: #fff; }
+    .nav button.active { color: #fff; background: #245549; box-shadow: inset 3px 0 #9ad8bb; }
+    .nav-icon { width: 20px; text-align: center; font-size: 16px; opacity: .9; }
+    .nav-count { margin-left: auto; min-width: 20px; padding: 1px 6px; border-radius: 99px; background: #ad503e; color: white; font-size: 11px; text-align: center; }
+    .sidebar-bottom { margin-top: auto; }
+    .depot-card { padding: 13px; border: 1px solid #33564e; border-radius: 12px; background: #173a34; }
+    .depot-card .eyebrow { color: #9ab7ad; font-size: 10px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+    .depot-card strong { display: block; margin-top: 5px; color: white; font-size: 13px; }
+    .depot-card span { display: block; margin-top: 2px; color: #b0c7bf; font-size: 11px; }
+    .demo-note { margin: 12px 4px 0; color: #93aaa2; font-size: 10px; line-height: 1.5; }
+    .main { min-width: 0; }
+    .topbar {
+      position: sticky; z-index: 5; top: 0; display: flex; justify-content: space-between; align-items: center;
+      min-height: 72px; padding: 0 34px; background: rgba(255,255,255,.92); border-bottom: 1px solid var(--line);
+      backdrop-filter: blur(14px);
+    }
+    .crumb { color: var(--muted); font-size: 12px; }
+    .crumb strong { color: var(--ink); font-weight: 700; }
+    .top-actions { display: flex; align-items: center; gap: 12px; }
+    .search-wrap { position: relative; width: min(340px, 36vw); }
+    .search-wrap input {
+      width: 100%; padding: 10px 38px 10px 36px; border: 1px solid var(--line); border-radius: 9px;
+      outline: none; color: var(--ink); background: #fbfcfb;
+    }
+    .search-wrap input:focus { border-color: #8db9a7; box-shadow: 0 0 0 3px #dcede5; }
+    .search-icon { position: absolute; left: 12px; top: 9px; color: #8a9996; }
+    .search-key { position: absolute; right: 9px; top: 9px; color: #8a9996; font-size: 10px; }
+    .search-results {
+      display: none; position: absolute; top: 46px; left: 0; right: 0; max-height: 360px; overflow: auto;
+      padding: 6px; background: white; border: 1px solid var(--line); border-radius: 11px; box-shadow: var(--shadow);
+    }
+    .search-results.open { display: block; }
+    .search-result { display: block; width: 100%; padding: 9px 10px; border: 0; border-radius: 7px; background: white; text-align: left; }
+    .search-result:hover { background: var(--canvas); }
+    .search-result strong, .search-result span { display: block; }
+    .search-result span { margin-top: 2px; color: var(--muted); font-size: 11px; }
+    .avatar { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; color: #27644f; background: #e1f0e9; font-weight: 750; }
+    .content { max-width: 1440px; margin: 0 auto; padding: 30px 34px 44px; }
+    .page-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; margin-bottom: 23px; }
+    .page-head h1 { margin: 0; font-size: clamp(24px, 3vw, 30px); letter-spacing: -.045em; line-height: 1.15; }
+    .page-head p { margin: 7px 0 0; color: var(--muted); }
+    .head-actions { display: flex; gap: 9px; align-items: center; }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 9px 13px;
+      border: 1px solid var(--line); border-radius: 8px; background: white; color: var(--ink); font-weight: 650;
+      transition: transform .12s, background .12s, border .12s;
+    }
+    .btn:hover { background: #f8faf8; border-color: #cbd8d2; }
+    .btn:active { transform: translateY(1px); }
+    .btn.primary { color: white; background: var(--green); border-color: var(--green); }
+    .btn.primary:hover { background: var(--green-dark); }
+    .btn.ghost-danger { color: var(--red); border-color: #efd6d3; }
+    .btn.small { padding: 6px 9px; font-size: 12px; }
+    .grid { display: grid; gap: 16px; }
+    .stats { grid-template-columns: repeat(4, minmax(0, 1fr)); margin-bottom: 18px; }
+    .card { background: white; border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 2px 6px rgba(22,51,42,.025); }
+    .stat-card { padding: 17px 18px; }
+    .stat-top { display: flex; justify-content: space-between; align-items: center; color: var(--muted); font-size: 12px; font-weight: 650; }
+    .stat-icon { display: grid; place-items: center; width: 31px; height: 31px; border-radius: 9px; background: var(--green-pale); color: var(--green); font-size: 15px; }
+    .stat-card.warning .stat-icon { background: var(--amber-pale); color: var(--amber); }
+    .stat-card.danger .stat-icon { background: var(--red-pale); color: var(--red); }
+    .stat-value { display: flex; align-items: baseline; gap: 8px; margin-top: 9px; font-size: 29px; font-weight: 780; letter-spacing: -.04em; }
+    .stat-meta { color: var(--muted); font-size: 11px; font-weight: 500; letter-spacing: 0; }
+    .dash-grid { grid-template-columns: minmax(0, 1.45fr) minmax(310px, .9fr); }
+    .panel { padding: 19px; }
+    .panel-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 17px; }
+    .panel-head h2 { margin: 0; font-size: 15px; letter-spacing: -.02em; }
+    .panel-head p { margin: 4px 0 0; color: var(--muted); font-size: 11px; }
+    .link-btn { border: 0; padding: 4px 0; background: transparent; color: var(--green); font-size: 12px; font-weight: 700; }
+    .link-btn:hover { color: var(--green-dark); text-decoration: underline; }
+    .chart { height: 210px; display: flex; align-items: end; justify-content: space-around; gap: 12px; padding: 8px 4px 0; border-bottom: 1px solid var(--line); }
+    .chart-col { display: flex; flex: 1; height: 100%; flex-direction: column; justify-content: end; align-items: center; gap: 8px; }
+    .chart-bar { position: relative; width: min(38px, 72%); min-height: 14px; border-radius: 6px 6px 2px 2px; background: #c7e4d6; }
+    .chart-bar.current { background: var(--green); }
+    .chart-bar:hover::after { content: attr(data-value); position: absolute; top: -27px; left: 50%; transform: translateX(-50%); padding: 3px 6px; border-radius: 5px; color: white; background: #1d3731; font-size: 10px; white-space: nowrap; }
+    .chart-label { padding-bottom: 8px; color: var(--muted); font-size: 10px; }
+    .chart-legend { display: flex; justify-content: space-between; margin-top: 12px; color: var(--muted); font-size: 11px; }
+    .legend-dot { display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; background: var(--green); }
+    .alert-list { display: grid; gap: 0; }
+    .alert-item { display: grid; grid-template-columns: 35px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 12px 0; border-top: 1px solid #eff2f0; }
+    .alert-item:first-child { border-top: 0; padding-top: 0; }
+    .alert-icon { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 9px; background: var(--amber-pale); color: var(--amber); }
+    .alert-icon.red { color: var(--red); background: var(--red-pale); }
+    .alert-copy strong { display: block; font-size: 12px; }
+    .alert-copy span { display: block; margin-top: 2px; color: var(--muted); font-size: 11px; }
+    .alert-date { color: var(--muted); font-size: 10px; white-space: nowrap; }
+    .lower-grid { grid-template-columns: minmax(0, 1.15fr) minmax(290px, .85fr); margin-top: 16px; }
+    .mini-table { width: 100%; border-collapse: collapse; }
+    .mini-table th { padding: 0 8px 10px; color: #869491; font-size: 10px; font-weight: 750; text-align: left; text-transform: uppercase; letter-spacing: .07em; }
+    .mini-table td { padding: 11px 8px; border-top: 1px solid #eff2f0; font-size: 12px; }
+    .mini-table td:first-child { padding-left: 0; }
+    .mini-table th:first-child { padding-left: 0; }
+    .reg { font-weight: 800; letter-spacing: .04em; }
+    .subline { display: block; color: var(--muted); font-size: 10px; font-weight: 450; letter-spacing: 0; }
+    .badge { display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px; border-radius: 999px; font-size: 10px; font-weight: 750; white-space: nowrap; }
+    .badge::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+    .badge.good { color: #267252; background: #e9f5ed; }
+    .badge.warn { color: #986414; background: #fbf1dd; }
+    .badge.bad { color: #a73e38; background: #f9e9e7; }
+    .badge.info { color: #466b93; background: #eaf0f7; }
+    .activity-list { display: grid; }
+    .activity { display: grid; grid-template-columns: 28px 1fr; gap: 10px; padding: 11px 0; border-top: 1px solid #eff2f0; }
+    .activity:first-child { padding-top: 0; border-top: 0; }
+    .activity-mark { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; background: #f0f5f2; color: var(--green); font-size: 12px; }
+    .activity p { margin: 0; font-size: 11px; line-height: 1.5; }
+    .activity time { display: block; margin-top: 3px; color: var(--muted); font-size: 10px; }
+    .table-card { overflow: hidden; }
+    .table-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 15px 17px; border-bottom: 1px solid var(--line); }
+    .table-toolbar p { margin: 0; color: var(--muted); font-size: 12px; }
+    .filter-input { width: 210px; max-width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 7px; outline: none; }
+    .filter-input:focus, .form-control:focus { border-color: #8db9a7; box-shadow: 0 0 0 3px #dcede5; }
+    .table-scroll { overflow-x: auto; }
+    .data-table { width: 100%; border-collapse: collapse; white-space: nowrap; }
+    .data-table th { padding: 11px 16px; color: #879390; background: #fbfcfb; font-size: 10px; font-weight: 750; text-align: left; text-transform: uppercase; letter-spacing: .07em; }
+    .data-table td { padding: 13px 16px; border-top: 1px solid #eff2f0; font-size: 12px; }
+    .data-table tbody tr:hover { background: #fbfdfb; }
+    .row-link { color: var(--green); border: 0; background: none; font-weight: 700; }
+    .row-link:hover { text-decoration: underline; }
+    .section-tabs { display: flex; gap: 18px; margin: -4px 0 16px; border-bottom: 1px solid var(--line); }
+    .section-tabs button { padding: 8px 2px 10px; border: 0; border-bottom: 2px solid transparent; color: var(--muted); background: transparent; font-size: 12px; font-weight: 650; }
+    .section-tabs button.active { border-color: var(--green); color: var(--green); }
+    .empty-state { padding: 32px 16px; color: var(--muted); text-align: center; }
+    .notice { display: flex; gap: 10px; padding: 12px 14px; margin-bottom: 14px; border: 1px solid #e4ece7; border-radius: 9px; background: #f5faf7; color: #527166; font-size: 11px; }
+    .notice strong { color: #295844; }
+    .modal-backdrop { position: fixed; z-index: 20; inset: 0; display: none; align-items: center; justify-content: center; padding: 20px; background: rgba(12,31,27,.44); }
+    .modal-backdrop.open { display: flex; }
+    .modal { width: min(600px, 100%); max-height: min(90vh, 850px); overflow: auto; border-radius: 14px; background: white; box-shadow: 0 24px 90px rgba(10,30,24,.24); }
+    .modal-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 15px; padding: 20px 22px 15px; border-bottom: 1px solid var(--line); }
+    .modal-head h2 { margin: 0; font-size: 18px; letter-spacing: -.03em; }
+    .modal-head p { margin: 4px 0 0; color: var(--muted); font-size: 11px; }
+    .icon-btn { display: grid; place-items: center; width: 30px; height: 30px; border: 0; border-radius: 7px; color: #64736f; background: #f3f6f4; font-size: 18px; }
+    .modal-body { padding: 18px 22px 22px; }
+    .modal-foot { display: flex; justify-content: flex-end; gap: 8px; padding-top: 18px; margin-top: 18px; border-top: 1px solid var(--line); }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 13px 14px; }
+    .field { display: grid; gap: 5px; }
+    .field.full { grid-column: 1 / -1; }
+    .field label { color: #52615d; font-size: 11px; font-weight: 700; }
+    .form-control { width: 100%; padding: 9px 10px; border: 1px solid #dfe6e2; border-radius: 7px; outline: none; color: var(--ink); background: white; }
+    textarea.form-control { min-height: 75px; resize: vertical; }
+    .form-help { color: var(--muted); font-size: 10px; }
+    .report-section { padding: 13px 0; border-bottom: 1px solid #eff2f0; }
+    .report-section:last-child { border-bottom: 0; }
+    .report-section h3 { margin: 0 0 8px; color: #798783; font-size: 10px; text-transform: uppercase; letter-spacing: .08em; }
+    .report-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 9px 16px; }
+    .report-meta span { display: block; color: var(--muted); font-size: 10px; }
+    .report-meta strong { display: block; margin-top: 2px; font-size: 12px; }
+    .report-note { margin: 0; font-size: 12px; line-height: 1.6; }
+    .roller-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 12px; border: 1px solid var(--line); border-radius: 9px; background: #fbfcfb; }
+    .toast-area { position: fixed; z-index: 40; right: 22px; bottom: 22px; display: grid; gap: 8px; }
+    .toast { padding: 11px 15px; border-radius: 9px; color: white; background: #193d33; box-shadow: var(--shadow); animation: toast-in .2s ease-out; }
+    .calendar-wrap { overflow: auto; max-height: 72vh; }
+    .calendar-table { border-collapse: separate; border-spacing: 0; white-space: nowrap; }
+    .calendar-table th, .calendar-table td { min-width: 43px; padding: 7px 5px; border-right: 1px solid #eff2f0; border-bottom: 1px solid #eff2f0; text-align: center; font-size: 10px; }
+    .calendar-table th { position: sticky; z-index: 2; top: 0; background: #fbfcfb; color: #75827f; }
+    .calendar-table th:first-child, .calendar-table td:first-child { position: sticky; z-index: 3; left: 0; min-width: 110px; background: white; text-align: left; }
+    .calendar-table th:first-child { z-index: 4; background: #fbfcfb; }
+    .calendar-table .current-week { background: #e8f4ef; color: var(--green); }
+    .cal-code { display: inline-block; min-width: 27px; padding: 3px 4px; border-radius: 4px; font-weight: 800; }
+    .cal-code.stage-1 { color: #121b19; text-decoration: line-through; }
+    .cal-code.stage-2 { color: #356caa; text-decoration: line-through; }
+    .cal-code.stage-3 { color: #27654e; background: #fff1bd; text-decoration: line-through; }
+    .cal-code.stage-4 { color: white; background: #b4443d; }
+    .cal-code.vor { color: #9c4038; background: #fae8e5; }
+    .field-hint { color: var(--muted); font-size: 10px; }
+    .inline-actions { display: flex; flex-wrap: wrap; gap: 7px; }
+    .rag-row { display: flex; align-items: center; gap: 8px; }
+    .days-pill { display: inline-block; padding: 3px 7px; border-radius: 99px; background: var(--amber-pale); color: var(--amber); font-size: 10px; font-weight: 750; }
+    .days-pill.overdue { background: var(--red-pale); color: var(--red); }
+    .days-pill.ok { background: var(--green-pale); color: var(--green); }
+    @keyframes toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    @media (max-width: 1050px) {
+      .app { grid-template-columns: 205px minmax(0, 1fr); }
+      .content { padding-right: 22px; padding-left: 22px; }
+      .topbar { padding-right: 22px; padding-left: 22px; }
+      .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .dash-grid, .lower-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 700px) {
+      .app { display: block; }
+      .sidebar { position: relative; width: 100%; height: auto; padding: 12px 14px; }
+      .brand { padding: 0 4px 12px; }
+      .sidebar .nav-label, .sidebar-bottom { display: none; }
+      .nav { display: flex; overflow-x: auto; gap: 5px; }
+      .nav button { flex: 0 0 auto; width: auto; padding: 8px 10px; font-size: 11px; }
+      .nav-icon { display: none; }
+      .nav-count { margin-left: 0; }
+      .topbar { position: relative; min-height: 58px; padding: 0 15px; }
+      .content { padding: 22px 15px 34px; }
+      .search-wrap { width: min(240px, 56vw); }
+      .crumb { display: none; }
+      .page-head { flex-direction: column; }
+      .head-actions { width: 100%; }
+      .head-actions .btn { flex: 1; }
+      .stats { gap: 10px; }
+      .stat-card { padding: 13px; }
+      .stat-value { font-size: 24px; }
+      .panel { padding: 15px; }
+      .form-grid, .report-meta { grid-template-columns: 1fr; }
+      .field.full { grid-column: auto; }
+      .table-toolbar { align-items: flex-start; flex-direction: column; }
+      .filter-input { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">TF</div>
+        <div><strong>Tiverton Fleet Desk</strong><span>Depot operations</span></div>
+      </div>
+      <div class="nav-label">Workspace</div>
+      <nav class="nav" aria-label="Main navigation">
+        <button class="active" data-view="dashboard"><span class="nav-icon">▦</span>Dashboard</button>
+        <button data-view="vehicles"><span class="nav-icon">▰</span>Vehicles</button>
+        <button data-view="calendar"><span class="nav-icon">▦</span>Maintenance calendar</button>
+        <button data-view="checks"><span class="nav-icon">✓</span>Completed checks</button>
+        <button data-view="drivers"><span class="nav-icon">♙</span>Drivers</button>
+        <button data-view="starters"><span class="nav-icon">＋</span>New starters</button>
+        <button data-view="cpc"><span class="nav-icon">◷</span>CPC hours</button>
+        <button data-view="tacho"><span class="nav-icon">◷</span>Tacho &amp; pay</button>
+        <button data-view="defects"><span class="nav-icon">!</span>Driver defects</button>
+        <button data-view="compliance"><span class="nav-icon">◷</span>PMI &amp; compliance<span class="nav-count" id="compliance-count">2</span></button>
+        <button data-view="quality"><span class="nav-icon">✓</span>Quality checks</button>
+        <button data-view="settings"><span class="nav-icon">⚙</span>Configuration</button>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="depot-card"><div class="eyebrow">Active depot</div><strong>Tiverton</strong><span>Carlsberg Britvic · South West</span></div>
+        <div class="demo-note">Prototype preview · sample records only<br>Changes stay in this browser.</div>
+      </div>
+    </aside>
+    <main class="main">
+      <header class="topbar">
+        <div class="crumb">Operations <span aria-hidden="true">/</span> <strong id="crumb-current">Dashboard</strong></div>
+        <div class="top-actions">
+          <div class="search-wrap">
+            <span class="search-icon" aria-hidden="true">⌕</span>
+            <input id="global-search" type="search" placeholder="Search reg, driver, issue..." aria-label="Search fleet, drivers and compliance">
+            <span class="search-key">⌘ K</span>
+            <div class="search-results" id="search-results"></div>
+          </div>
+          <div class="avatar" title="Depot manager">SM</div>
+        </div>
+      </header>
+      <section class="content" id="content"></section>
+    </main>
+  </div>
+  <div class="modal-backdrop" id="modal-backdrop" role="presentation">
+    <section class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"></section>
+  </div>
+  <div class="toast-area" id="toast-area" aria-live="polite"></div>
+  <script>
+    const seed = {
+      vehicles: [
+        { reg: "WX20 KLM", make: "Volvo", model: "FM 450", type: "Rigid", mileage: "184,290", nextPmi: "22 Oct 2026", status: "In service", active: true, inFleet: true, intervalWeeks: 10, provider: "Tiverton Commercials", pmiLast: "13 Aug 2026", tachoLast: "15 Jan 2025", tachoDue: "15 Jan 2027", motDue: "09 Mar 2027", taxDue: "30 Nov 2026", loler6: "12 Dec 2026", loler12: "12 Apr 2027", fireDue: "01 May 2027", weighingLast: "02 May 2026", autolockLast: "07 Jun 2026", dtp: "DTP-4482" },
+        { reg: "WX21 JNP", make: "DAF", model: "LF 260", type: "Rigid", mileage: "126,840", nextPmi: "24 Oct 2026", status: "In service", active: true, inFleet: true, intervalWeeks: 10, provider: "Tiverton Commercials", pmiLast: "15 Aug 2026", tachoLast: "20 Oct 2024", tachoDue: "20 Oct 2026", motDue: "01 Feb 2027", taxDue: "03 Dec 2026", loler6: "20 Nov 2026", loler12: "20 Feb 2027", fireDue: "17 Apr 2027", weighingLast: "08 May 2026", autolockLast: "04 Apr 2026", dtp: "DTP-5501" },
+        { reg: "WX19 BRT", make: "Mercedes-Benz", model: "Actros 2545", type: "Artic", mileage: "302,115", nextPmi: "19 Oct 2026", status: "Workshop", active: true, inFleet: true, intervalWeeks: 10, provider: "Tiverton Commercials", pmiLast: "10 Aug 2026", tachoLast: "05 Sep 2024", tachoDue: "05 Sep 2026", motDue: "17 Dec 2026", taxDue: "28 Oct 2026", loler6: "02 Nov 2026", loler12: "02 Mar 2027", fireDue: "18 Mar 2027", weighingLast: "05 Jun 2026", autolockLast: "09 Sep 2026", dtp: "DTP-3302" },
+        { reg: "WX22 DFG", make: "Volvo", model: "FM 420", type: "Rigid", mileage: "98,530", nextPmi: "30 Oct 2026", status: "In service", active: true, inFleet: true, intervalWeeks: 10, provider: "Westcountry Fleet", pmiLast: "21 Aug 2026", tachoLast: "01 Dec 2024", tachoDue: "01 Dec 2026", motDue: "22 Apr 2027", taxDue: "15 Dec 2026", loler6: "21 Feb 2027", loler12: "21 Aug 2027", fireDue: "03 Jun 2027", weighingLast: "15 Sep 2026", autolockLast: "08 Jul 2026", dtp: "DTP-7720" },
+        { reg: "WX18 HGC", make: "DAF", model: "CF 450", type: "Artic", mileage: "356,710", nextPmi: "02 Nov 2026", status: "In service", active: true, inFleet: true, intervalWeeks: 10, provider: "Tiverton Commercials", pmiLast: "24 Aug 2026", tachoLast: "12 Jul 2025", tachoDue: "12 Jul 2027", motDue: "20 May 2027", taxDue: "02 Dec 2026", loler6: "13 Dec 2026", loler12: "13 Jun 2027", fireDue: "11 Aug 2027", weighingLast: "19 Mar 2026", autolockLast: "19 Mar 2026", dtp: "" },
+        { reg: "WX23 KTU", make: "Volvo", model: "FE 320", type: "Rigid", mileage: "74,205", nextPmi: "07 Nov 2026", status: "In service", active: true, inFleet: true, intervalWeeks: 10, provider: "Westcountry Fleet", pmiLast: "29 Aug 2026", tachoLast: "15 Feb 2025", tachoDue: "15 Feb 2027", motDue: "12 Apr 2027", taxDue: "10 Jan 2027", loler6: "01 Mar 2027", loler12: "01 Sep 2027", fireDue: "09 May 2027", weighingLast: "01 Apr 2026", autolockLast: "30 Sep 2026", dtp: "DTP-8821" },
+        { reg: "WX20 MZR", make: "DAF", model: "LF 230", type: "Rigid", mileage: "166,480", nextPmi: "12 Nov 2026", status: "In service", active: true, inFleet: true, intervalWeeks: 10, provider: "Tiverton Commercials", pmiLast: "03 Sep 2026", tachoLast: "02 Nov 2024", tachoDue: "02 Nov 2026", motDue: "08 Jan 2027", taxDue: "18 Dec 2026", loler6: "03 Mar 2027", loler12: "03 Sep 2027", fireDue: "18 Jul 2027", weighingLast: "08 Aug 2026", autolockLast: "05 Sep 2026", dtp: "DTP-5100" },
+        { reg: "WX17 FVL", make: "Mercedes-Benz", model: "Actros 2545", type: "Artic", mileage: "412,090", nextPmi: "18 Nov 2026", status: "In service", active: true, inFleet: true, intervalWeeks: 10, provider: "Westcountry Fleet", pmiLast: "09 Sep 2026", tachoLast: "25 May 2025", tachoDue: "25 May 2027", motDue: "19 Jun 2027", taxDue: "30 Dec 2026", loler6: "10 Mar 2027", loler12: "10 Sep 2027", fireDue: "04 Apr 2027", weighingLast: "15 Jul 2026", autolockLast: "15 Jul 2026", dtp: "DTP-0081" }
+      ],
+      drivers: [
+        { name: "James Carter", id: "TV-104", role: "Class 1", status: "Active", active: true, cardExpiry: "18 Dec 2026", licenceExpiry: "30 Jun 2027", photoExpiry: "15 Apr 2027", cpcExpiry: "15 Dec 2027", declarationDue: "15 Feb 2027", eyesightDue: "12 May 2027", bridgeDue: "10 Apr 2027", pg9Due: "20 Jan 2027", assessmentDue: "05 Aug 2027", dgDue: "12 Oct 2027", notifiable: false, lastShift: "Today, 06:12" },
+        { name: "Priya Shah", id: "TV-117", role: "Class 2", status: "Active", active: true, cardExpiry: "03 Nov 2026", licenceExpiry: "01 Dec 2026", photoExpiry: "01 Dec 2026", cpcExpiry: "03 Nov 2026", declarationDue: "01 Jan 2027", eyesightDue: "18 Feb 2027", bridgeDue: "15 Nov 2026", pg9Due: "12 Dec 2026", assessmentDue: "16 Jul 2027", dgDue: "12 Aug 2027", notifiable: false, lastShift: "Today, 05:48" },
+        { name: "Owen Williams", id: "TV-092", role: "Class 1", status: "Active", active: true, cardExpiry: "21 Jan 2027", licenceExpiry: "15 Mar 2027", photoExpiry: "15 Mar 2027", cpcExpiry: "21 Jan 2027", declarationDue: "15 Jun 2027", eyesightDue: "11 Jan 2027", bridgeDue: "10 Jul 2027", pg9Due: "08 Oct 2026", assessmentDue: "16 Jul 2027", dgDue: "12 Aug 2027", notifiable: false, lastShift: "Today, 06:32" },
+        { name: "Sophie Davies", id: "TV-126", role: "Class 2", status: "Active", active: true, cardExpiry: "29 Oct 2026", licenceExpiry: "30 Oct 2026", photoExpiry: "30 Oct 2026", cpcExpiry: "30 Oct 2026", declarationDue: "10 Apr 2027", eyesightDue: "12 May 2027", bridgeDue: "11 Aug 2027", pg9Due: "20 Jan 2027", assessmentDue: "05 Aug 2027", dgDue: "12 Oct 2027", notifiable: true, condition: "Notifiable condition disclosed; review with transport manager.", lastShift: "Yesterday, 14:05" },
+        { name: "Liam Murphy", id: "TV-081", role: "Class 1", status: "On leave", active: true, cardExpiry: "11 Mar 2027", licenceExpiry: "21 Aug 2027", photoExpiry: "21 Aug 2027", cpcExpiry: "11 Mar 2027", declarationDue: "01 Sep 2027", eyesightDue: "07 Feb 2027", bridgeDue: "10 Jul 2027", pg9Due: "06 Apr 2027", assessmentDue: "16 Jul 2027", dgDue: "12 Aug 2027", notifiable: false, lastShift: "17 Oct, 15:40" }
+      ],
+      issues: [
+        { id: "PMI-2418", reg: "WX19 BRT", date: "19 Oct 2026", category: "Brakes", issue: "Rear offside brake efficiency below threshold", maintainer: "Tiverton Commercials", status: "Awaiting response", response: "", closeHow: "", evidence: "", closeDate: "" },
+        { id: "PMI-2412", reg: "WX20 KLM", date: "16 Oct 2026", category: "Lighting", issue: "Nearside rear marker lamp intermittent", maintainer: "Tiverton Commercials", status: "In progress", response: "Parts ordered; vehicle booked for repair on 20 Oct.", closeHow: "", evidence: "", closeDate: "" },
+        { id: "PMI-2403", reg: "WX21 JNP", date: "12 Oct 2026", category: "Tyres", issue: "Front nearside tyre showing uneven wear", maintainer: "Westcountry Tyres", status: "Closed", response: "Replacement tyre fitted and tracking checked.", closeHow: "Replaced front nearside tyre; wheel alignment checked.", evidence: "Repair invoice WT-8841", closeDate: "14 Oct 2026" },
+        { id: "PMI-2398", reg: "WX22 DFG", date: "09 Oct 2026", category: "Bodywork", issue: "Cab step loose, fixings worn", maintainer: "Tiverton Commercials", status: "Closed", response: "Vehicle inspected; new fixings available.", closeHow: "Replaced step fixings and verified secure.", evidence: "Workshop photo attached", closeDate: "10 Oct 2026" }
+      ],
+      qc: [
+        { id: "QC-0821", reg: "WX19 BRT", date: "19 Oct 2026", inspector: "Glyn Thomas", result: "Action required", roller: "Fail", note: "Rear axle imbalance above tolerance; retest required." },
+        { id: "QC-0820", reg: "WX20 KLM", date: "19 Oct 2026", inspector: "Noel Evans", result: "Passed", roller: "Pass", note: "Daily handover check complete." },
+        { id: "QC-0819", reg: "WX21 JNP", date: "18 Oct 2026", inspector: "Glyn Thomas", result: "Passed", roller: "Pass", note: "Vehicle condition and load security checked." },
+        { id: "QC-0816", reg: "WX22 DFG", date: "17 Oct 2026", inspector: "Noel Evans", result: "Follow-up", roller: "Retest", note: "Retest after adjustment; technician sign-off pending." }
+      ],
+      checks: [
+        { id: "CHK-1142", reg: "WX21 JNP", type: "PMI", date: "15 Aug 2026", nextDue: "24 Oct 2026", loggedBy: "Glyn Thomas", notes: "Wheels not removed; all items passed.", documentReceived: "16 Aug 2026", filed: "18 Aug 2026", qcResult: "Pass", mileage: 126840, wheelsRemoved: "No" },
+        { id: "CHK-1137", reg: "WX19 BRT", type: "PMI", date: "10 Aug 2026", nextDue: "19 Oct 2026", loggedBy: "Noel Evans", notes: "Brake performance below threshold; compliance item raised.", documentReceived: "11 Aug 2026", filed: "", qcResult: "Fail", mileage: 302115, wheelsRemoved: "Yes" },
+        { id: "CHK-1131", reg: "WX20 KLM", type: "MOT Passed", date: "09 Mar 2026", nextDue: "09 Mar 2027", loggedBy: "Stephen", notes: "MOT passed.", documentReceived: "10 Mar 2026", filed: "12 Mar 2026", qcResult: "Pass" }
+      ],
+      statuses: [{ reg: "WX19 BRT", status: "With Maintenance Provider", start: "19 Oct 2026", end: "", notes: "Brake test failure; workshop diagnosis.", loggedBy: "Stephen" }],
+      defects: [
+        { id: "D0813", reg: "WX19 BRT", driver: "Priya Shah", date: "19 Oct 2026", time: "07:42", defect: "Rear offside brake efficiency low", status: "Outstanding", jobCard: "", action: "", actionBy: "", actionDate: "", provider: "", repair: "", repairBy: "", completed: "", part3Complete: false, source: "Driver report", pmiDate: "" },
+        { id: "D0809", reg: "WX20 KLM", driver: "James Carter", date: "18 Oct 2026", time: "13:18", defect: "Nearside rear marker lamp intermittent", status: "In progress", jobCard: "TC-1002", action: "Replacement lamp requested", actionBy: "Noel Evans", actionDate: "18 Oct 2026", provider: "Tiverton Commercials", repair: "", repairBy: "", completed: "", part3Complete: false, source: "Driver report", pmiDate: "" },
+        { id: "D0803", reg: "WX21 JNP", driver: "Owen Williams", date: "16 Oct 2026", time: "11:02", defect: "Windscreen washer jet blocked", status: "Completed", jobCard: "TC-0998", action: "Washer jets cleaned and tested", actionBy: "Glyn Thomas", actionDate: "16 Oct 2026", provider: "Tiverton Commercials", repair: "Cleaned washer jets and checked spray pattern.", repairBy: "Glyn Thomas", completed: "17 Oct 2026", part3Complete: true, source: "Driver report", pmiDate: "" }
+      ],
+      starters: [
+        { id:"NS-003", name:"Maya Patel", startDate:"05 Oct 2026", inductionDone:"", signOff1Done:"", signOff2Done:"" },
+        { id:"NS-002", name:"Ben Foster", startDate:"20 Aug 2026", inductionDone:"31 Aug 2026", signOff1Done:"17 Sep 2026", signOff2Done:"" }
+      ],
+      tacho: [
+        { id:"TD-2301",driver:"James Carter",driverId:"TV-104",date:"19 Oct 2026",reg:"WX20 KLM",start:"06:12",end:"15:08",rest:"00:35",check:"00:22",working:"08:24",source:"Tacho + D28",flag:"",approval:"Pending",download:"19 Oct 2026"},
+        { id:"TD-2300",driver:"Priya Shah",driverId:"TV-117",date:"19 Oct 2026",reg:"WX19 BRT",start:"05:48",end:"14:34",rest:"00:42",check:"00:18",working:"08:04",source:"D28",flag:"Card only from 06:02 – start/end from D28, check time not known",approval:"Pending",download:"19 Oct 2026"},
+        { id:"TD-2299",driver:"Owen Williams",driverId:"TV-092",date:"18 Oct 2026",reg:"WX21 JNP",start:"06:32",end:"15:20",rest:"00:30",check:"00:20",working:"08:08",source:"Tacho + D28",flag:"Manual entry 1:42 long (04:50–06:32)",approval:"Pending",download:"18 Oct 2026"},
+        { id:"TD-2298",driver:"?Davies",driverId:"",date:"18 Oct 2026",reg:"",start:"",end:"",rest:"",check:"",working:"",source:"D28",flag:"Driver card not linked",approval:"Pending",download:""}
+      ],
+      courses: [
+        { driver: "James Carter", course: "Driver CPC periodic training", date: "15 Apr 2026", hours: 7, previous: false, notes: "Module 1" },
+        { driver: "James Carter", course: "Safe and fuel-efficient driving", date: "22 Jun 2026", hours: 7, previous: false, notes: "" },
+        { driver: "Priya Shah", course: "Driver CPC periodic training", date: "20 Dec 2026", hours: 7, previous: false, notes: "Booked" }
+      ],
+      training: [],
+      config: { warningDays: 14, licenceDays: "", cpcRequired: 35, cpcAmber: 365, cpcRed: 90, pmiDefaultWeeks: 10, tachoMonths: 24, loler6Months: 6, loler12Months: 12, fireMonths: 12, complianceDays: 14, calendarWeeks: 106, calendarStart: "2025-12-29", inductionDays:14,signOff1Days:30,signOff2Days:30,rbtAxleGood:65,rbtTestValid:50,rbtImbalanceReview:25,rbtImbalanceFail:30,rbtWheelEffort:5,rbtService:50,rbtSecondary:25,rbtParking:16,rbtEfficiencyDrop:10, contractHours:48, driverCardDays:28, providers: "Tiverton Commercials, Westcountry Fleet, Westcountry Tyres" },
+      activity: [
+        { icon: "✓", text: "<strong>PMI completed</strong> for WX21 JNP by Glyn Thomas", time: "Today, 08:42" },
+        { icon: "!", text: "<strong>Brake issue raised</strong> on WX19 BRT", time: "Today, 08:18" },
+        { icon: "↗", text: "<strong>Repair update received</strong> for PMI-2412", time: "Yesterday, 16:05" },
+        { icon: "♙", text: "<strong>Driver card expiry reminder</strong> sent to Sophie Davies", time: "Yesterday, 09:30" }
+      ]
+    };
+    const storeKey = "tiverton-fleet-desk-prototype-v1";
+    let data = loadData();
+    let currentView = "dashboard";
+    let complianceTab = "open";
+    let vehicleFilter = "";
+    let driverFilter = "";
+    let qcFilter = "";
+    const content = document.getElementById("content");
+    const modalBackdrop = document.getElementById("modal-backdrop");
+    const modal = document.getElementById("modal");
+    const names = { dashboard: "Dashboard", vehicles: "Vehicles", calendar: "Maintenance calendar", checks: "Completed checks", drivers: "Drivers", starters:"New starters", cpc: "CPC hours", tacho:"Tacho & pay", defects: "Driver defects", compliance: "PMI & compliance", quality: "Quality checks", settings: "Configuration" };
+
+    function loadData() {
+      try {
+        const saved = localStorage.getItem(storeKey);
+        if (!saved) return normalizeRegistrations(structuredClone(seed));
+        const parsed=JSON.parse(saved),merged={...structuredClone(seed),...parsed};
+        merged.config={...seed.config,...(parsed.config||{})};
+        ["checks","statuses","defects","starters","tacho","courses","training"].forEach(key=>{if(!Array.isArray(parsed[key]))merged[key]=structuredClone(seed[key]);});
+        merged.vehicles=(parsed.vehicles||seed.vehicles).map(vehicle=>({...seed.vehicles.find(item=>normalizeReg(item.reg)===normalizeReg(vehicle.reg)),...vehicle}));
+        merged.drivers=(parsed.drivers||seed.drivers).map(driver=>({...seed.drivers.find(item=>item.name===driver.name),...driver}));
+        return normalizeRegistrations(merged);
+      } catch (error) {
+        console.warn("Could not load saved prototype data.", error);
+        return structuredClone(seed);
+      }
+    }
+    function normalizeReg(value) { return String(value||"").toUpperCase().replace(/\s+/g,""); }
+    function normalizeDtp(value) { return String(value||"").toUpperCase().replace(/[\s\-\/]/g,""); }
+    function displayReg(value) {
+      const normalized=normalizeReg(value);
+      return normalized.length===7?`${normalized.slice(0,4)} ${normalized.slice(4)}`:normalized;
+    }
+    function normalizeRegistrations(model) {
+      for(const vehicle of model.vehicles||[])vehicle.reg=normalizeReg(vehicle.reg);
+      for(const key of ["issues","checks","statuses","defects","qc","tacho"])for(const row of model[key]||[])if(row.reg)row.reg=normalizeReg(row.reg);
+      return model;
+    }
+    function saveData() {
+      try { localStorage.setItem(storeKey, JSON.stringify(data)); }
+      catch (error) { toast("This browser could not save the prototype changes."); console.error(error); }
+    }
+    function escapeHtml(value) {
+      return String(value ?? "").replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char]));
+    }
+    function badge(status) {
+      const cls = /closed|passed|in service|active/i.test(status) ? "good" : /awaiting|due|in progress|follow-up|workshop/i.test(status) ? "warn" : /action|required|fail|overdue/i.test(status) ? "bad" : "info";
+      return `<span class="badge ${cls}">${escapeHtml(status)}</span>`;
+    }
+    function setView(view) {
+      currentView = view;
+      document.querySelectorAll(".nav button").forEach(button => button.classList.toggle("active", button.dataset.view === view));
+      document.getElementById("crumb-current").textContent = names[view];
+      render();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+    function render() {
+      document.getElementById("compliance-count").textContent = openComplianceRows().length;
+      if (currentView === "dashboard") renderDashboard();
+      if (currentView === "vehicles") renderVehicles();
+      if (currentView === "calendar") renderCalendar();
+      if (currentView === "checks") renderChecks();
+      if (currentView === "drivers") renderDrivers();
+      if (currentView === "starters") renderStarters();
+      if (currentView === "cpc") renderCpc();
+      if (currentView === "tacho") renderTacho();
+      if (currentView === "defects") renderDefects();
+      if (currentView === "compliance") renderCompliance();
+      if (currentView === "quality") renderQuality();
+      if (currentView === "settings") renderSettings();
+    }
+    function pageHead(title, subtitle, actions = "") {
+      return `<div class="page-head"><div><h1>${title}</h1><p>${subtitle}</p></div><div class="head-actions">${actions}</div></div>`;
+    }
+    const DEMO_TODAY = new Date(2026, 9, 19);
+    function parseLocalDate(value) {
+      if (!value) return null;
+      if (value instanceof Date) return new Date(value.getFullYear(), value.getMonth(), value.getDate());
+      const iso = String(value).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (iso) return new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]));
+      const parsed = new Date(value);
+      return Number.isNaN(parsed.getTime()) ? null : new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+    }
+    function dayDelta(value) {
+      const date = parseLocalDate(value);
+      return date ? Math.round((date - DEMO_TODAY) / 86400000) : null;
+    }
+    function rag(value, blankRequired = false, threshold = Number(data.config.warningDays || 14)) {
+      if (!value) return blankRequired ? "OVERDUE" : "–";
+      const days = dayDelta(value);
+      if(days===null)return blankRequired?"OVERDUE":"–";
+      return days < 0 ? "OVERDUE" : days <= threshold ? "DUE SOON" : "OK";
+    }
+    function ragBadge(value, blankRequired = false, threshold) {
+      const state = rag(value, blankRequired, threshold);
+      return `<span class="badge ${state==="OVERDUE"?"bad":state==="DUE SOON"?"warn":state==="OK"?"good":"info"}">${state}</span>`;
+    }
+    function toIso(value) {
+      const date = parseLocalDate(value);
+      return date ? `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}` : "";
+    }
+    function addDays(value, days) {
+      const date = parseLocalDate(value);
+      if (!date) return "";
+      date.setDate(date.getDate()+days);
+      return formattedDate(toIso(date));
+    }
+    function addMonths(value, months) {
+      const date = parseLocalDate(value);
+      if (!date) return "";
+      const day = date.getDate();
+      date.setDate(1); date.setMonth(date.getMonth()+months);
+      date.setDate(Math.min(day,new Date(date.getFullYear(),date.getMonth()+1,0).getDate()));
+      return formattedDate(toIso(date));
+    }
+    function fmtDate(value) {
+      if (!value) return "—";
+      const date = parseLocalDate(value);
+      return date ? date.toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}) : escapeHtml(value);
+    }
+    function vehicleDueItems(vehicle) {
+      return [
+        ["PMI",vehicle.nextPmi],["Tacho",vehicle.tachoDue],["Tax",vehicle.taxDue],["LOLER 6mo",vehicle.loler6],
+        ["LOLER 12mo",vehicle.loler12],["Fire Ext",vehicle.fireDue],["MOT",vehicle.motDue]
+      ].filter(item=>item[1]);
+    }
+    function vehicleRag(vehicle) {
+      const dates = vehicleDueItems(vehicle).map(([,value])=>dayDelta(value)).filter(value=>value!==null);
+      if (!dates.length) return "–";
+      const earliest = Math.min(...dates);
+      return earliest < 0 ? "OVERDUE" : earliest <= Number(data.config.warningDays||14) ? "DUE SOON" : "OK";
+    }
+    function driverItems(driver) {
+      const items = [
+        ["Licence expiry",driver.licenceExpiry,true,Number(data.config.licenceDays)||Number(data.config.warningDays||14)],
+        ["Photo card expiry",driver.photoExpiry,true,Number(data.config.warningDays||14)],
+        ["CPC card expiry",driver.cpcExpiry,true,Number(data.config.warningDays||14)],
+        ["Tachograph card expiry",driver.cardExpiry,true,Number(data.config.warningDays||14)],
+        ["Declaration form",driver.declarationDue,false,Number(data.config.warningDays||14)],
+        ["Eyesight test",driver.eyesightDue,false,Number(data.config.warningDays||14)],
+        ["Bridge strike",driver.bridgeDue,false,Number(data.config.warningDays||14)],
+        ["PG9 training",driver.pg9Due,false,Number(data.config.warningDays||14)],
+        ["Driving assessment",driver.assessmentDue,false,Number(data.config.warningDays||14)],
+        ["Dangerous goods",driver.dgDue,false,Number(data.config.warningDays||14)]
+      ];
+      (data.training||[]).filter(item=>item.driver===driver.name&&item.expiry).forEach(item=>items.push([item.subject,item.expiry,false,Number(data.config.warningDays||14)]));
+      const hours = cpcHours(driver.name);
+      const cpc = cpcResult(driver, hours);
+      if (cpc.state !== "–") items.push(["CPC hours",driver.cpcExpiry,false,Number(data.config.warningDays||14),cpc.state]);
+      return items;
+    }
+    function driverRag(driver) {
+      if (!driver.active && driver.status!=="Active") return "–";
+      const states=driverItems(driver).map(item=>item[4]||rag(item[1],item[2],item[3]));
+      if (states.includes("OVERDUE")) return "OVERDUE";
+      if (states.includes("DUE SOON")) return "DUE SOON";
+      return states.length ? "OK" : "–";
+    }
+    function openComplianceRows() {
+      const issues=data.issues.filter(issue=>issue.status!=="Closed");
+      const qc=(data.checks||[]).filter(item=>item.type==="PMI"&&!item.filed).map(item=>{
+        const age=Math.max(0,-dayDelta(item.date)),rejected=item.qcResult==="Fail";
+        return {id:`QC-${item.id}`,checkId:item.id,reg:item.reg,date:item.date,category:"PMI QC",issue:rejected?"PMI QC rejected – chase":"PMI QC outstanding",maintainer:"QC filing",status:age>Number(data.config.complianceDays||14)?"Overdue":rejected?"Due soon":"On track",age,isQc:true};
+      });
+      return [...issues.map(issue=>({...issue,age:Math.max(0,-dayDelta(issue.responseDate||issue.date)),isQc:false})),...qc];
+    }
+    function renderDashboard() {
+      const openIssues = openComplianceRows().length;
+      const fleet = data.vehicles.filter(vehicle=>vehicle.inFleet!==false&&vehicle.active!==false);
+      const vehicleCounts = fleet.reduce((counts,vehicle)=>{ const state=vehicleRag(vehicle); if(state==="OVERDUE") counts.overdue++; else if(state==="DUE SOON") counts.soon++; else if(state==="OK") counts.ok++; return counts; },{ok:0,soon:0,overdue:0});
+      const activeDrivers = data.drivers.filter(driver=>driver.active!==false&&driver.name!=="EXAMPLE DRIVER");
+      const driverCounts = activeDrivers.reduce((counts,driver)=>{const state=driverRag(driver);if(state==="OVERDUE")counts.overdue++;else if(state==="DUE SOON")counts.soon++;else if(state==="OK")counts.ok++;return counts;},{ok:0,soon:0,overdue:0});
+      const vehicleActions=fleet.flatMap(vehicle=>vehicleDueItems(vehicle).map(([label,date])=>({vehicle,label,date,days:dayDelta(date)})).filter(item=>item.days<=Number(data.config.warningDays||14))).sort((a,b)=>a.days-b.days);
+      const driverActions=activeDrivers.flatMap(driver=>{const items=driverItems(driver).filter(item=>(item[4]||rag(item[1],item[2],item[3]))!=="OK"&&(item[4]||rag(item[1],item[2],item[3]))!=="–");return items.length?items.map(item=>({driver,label:item[0],date:item[1],state:item[4]||rag(item[1],item[2],item[3])})):driver.notifiable?[{driver,label:"Notifiable DVLA condition",date:"",state:"FLAG"}]:[];}).sort((a,b)=>(a.state==="OVERDUE"?0:1)-(b.state==="OVERDUE"?0:1));
+      const starterActions=data.starters.filter(item=>starterStep(item)).sort((a,b)=>dayDelta(starterStep(a).due)-dayDelta(starterStep(b).due)).slice(0,3);
+      content.innerHTML = `
+        ${pageHead("Good morning, Stephen", "Monday, 19 October 2026 · Here’s what’s happening across the Tiverton fleet.", `<button class="btn" data-action="export">⇩ &nbsp;Export overview</button><button class="btn primary" data-action="new-qc">＋ &nbsp;New quality check</button>`)}
+        <div class="grid stats">
+          <article class="card stat-card"><div class="stat-top">Vehicles<span class="stat-icon">▰</span></div><div class="stat-value">${fleet.length}<span class="stat-meta">${vehicleCounts.ok} OK · ${vehicleCounts.soon} due soon · ${vehicleCounts.overdue} overdue</span></div></article>
+          <article class="card stat-card warning"><div class="stat-top">PMIs due soon<span class="stat-icon">◷</span></div><div class="stat-value">3<span class="stat-meta">next 14 days</span></div></article>
+          <article class="card stat-card danger"><div class="stat-top">Open defects<span class="stat-icon">!</span></div><div class="stat-value">${openIssues}<span class="stat-meta">need follow-up</span></div></article>
+          <article class="card stat-card"><div class="stat-top">Drivers<span class="stat-icon">♙</span></div><div class="stat-value">${activeDrivers.length}<span class="stat-meta">${driverCounts.ok} OK · ${driverCounts.soon} due soon · ${driverCounts.overdue} overdue</span></div></article>
+        </div>
+        <div class="card panel" style="padding:13px 17px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap"><div><strong style="font-size:12px">Tachograph &amp; pay</strong><span class="subline"> ${data.tacho.filter(row=>row.approval==="Pending").length} flagged days to review · ${data.tacho.filter(row=>!data.drivers.some(driver=>driver.id===row.driverId)).length} unlinked · ${data.drivers.filter(driver=>driver.active!==false&&!driver.lastCardDownload).length} cards not downloaded</span></div><button class="link-btn" data-view="tacho">Open duty review →</button></div>
+        <div class="grid dash-grid">
+          <article class="card panel">
+            <div class="panel-head"><div><h2>Fleet availability</h2><p>Vehicles available for the last 7 days</p></div><button class="btn small">This week⌄</button></div>
+            <div class="chart" aria-label="Fleet availability chart">${[["Tue",82],["Wed",90],["Thu",77],["Fri",95],["Sat",62],["Sun",52],["Mon",88]].map(([day,value],i)=>`<div class="chart-col"><div class="chart-bar ${i===6?"current":""}" style="height:${value}%" data-value="${value}% available"></div><span class="chart-label">${day}</span></div>`).join("")}</div>
+            <div class="chart-legend"><span><i class="legend-dot"></i>Available fleet</span><span>Target 90%</span></div>
+          </article>
+          <article class="card panel">
+            <div class="panel-head"><div><h2>Needs attention</h2><p>Prioritised actions for the depot</p></div><button class="link-btn" data-view="compliance">View all →</button></div>
+            <div class="alert-list">
+              <div class="alert-item"><span class="alert-icon red">!</span><div class="alert-copy"><strong>Brake test failed · WX19 BRT</strong><span>PMI-2418 · Maintainer response needed</span></div><span class="alert-date">Today</span></div>
+              <div class="alert-item"><span class="alert-icon">◷</span><div class="alert-copy"><strong>PMI due · WX20 KLM</strong><span>Scheduled inspection in 3 days</span></div><span class="alert-date">22 Oct</span></div>
+              <div class="alert-item"><span class="alert-icon">♙</span><div class="alert-copy"><strong>Driver card expiry · Sophie Davies</strong><span>Renewal due within 14 days</span></div><span class="alert-date">29 Oct</span></div>
+            </div>
+          </article>
+        </div>
+        <div class="grid lower-grid">
+          <article class="card panel">
+            <div class="panel-head"><div><h2>Upcoming inspections</h2><p>Next PMI dates across your fleet</p></div><button class="link-btn" data-view="vehicles">Vehicle register →</button></div>
+            <table class="mini-table"><thead><tr><th>Vehicle</th><th>Next PMI</th><th>Status</th></tr></thead><tbody>
+              ${data.vehicles.slice(0,4).map(vehicle=>`<tr><td><span class="reg">${displayReg(vehicle.reg)}</span><span class="subline">${escapeHtml(vehicle.make)} ${escapeHtml(vehicle.model)}</span></td><td>${escapeHtml(vehicle.nextPmi)}</td><td>${badge(vehicle.status === "Workshop" ? "Workshop" : "Scheduled")}</td></tr>`).join("")}
+            </tbody></table>
+          </article>
+          <article class="card panel">
+            <div class="panel-head"><div><h2>Recent activity</h2><p>Latest updates from the depot team</p></div><button class="link-btn" data-action="activity">View log →</button></div>
+            <div class="activity-list">${data.activity.slice(0,4).map(item=>`<div class="activity"><span class="activity-mark">${item.icon}</span><div><p>${item.text}</p><time>${escapeHtml(item.time)}</time></div></div>`).join("")}</div>
+          </article>
+        </div>`;
+      content.insertAdjacentHTML("beforeend",`<div class="grid lower-grid" style="margin-top:16px">
+        <article class="card panel"><div class="panel-head"><div><h2>Vehicles needing action</h2><p>${vehicleActions.length} due or overdue checks</p></div><button class="link-btn" data-view="vehicles">All ${fleet.length} active →</button></div>
+          <div class="alert-list">${vehicleActions.slice(0,5).map(item=>`<div class="alert-item"><span class="alert-icon ${item.days<0?"red":""}">◷</span><div class="alert-copy"><strong>${displayReg(item.vehicle.reg)} · ${escapeHtml(item.label)}</strong><span>${escapeHtml(item.vehicle.provider||"No provider")} · ${fmtDate(item.date)}</span></div>${ragBadge(item.date)}</div>`).join("")||`<p class="report-note">No vehicle items due within the warning window.</p>`}</div></article>
+        <article class="card panel"><div class="panel-head"><div><h2>Drivers needing action</h2><p>${driverActions.length} compliance items to review</p></div><button class="link-btn" data-view="drivers">All ${activeDrivers.length} active →</button></div>
+          <div class="alert-list">${driverActions.slice(0,5).map(item=>`<div class="alert-item"><span class="alert-icon ${item.state==="OVERDUE"?"red":""}">♙</span><div class="alert-copy"><strong>${escapeHtml(item.driver.name)} · ${escapeHtml(item.label)}</strong><span>${item.date?`Due ${fmtDate(item.date)}`:escapeHtml(item.driver.condition||"Review condition details")}</span></div>${item.state==="FLAG"?`<span class="badge info">FLAG</span>`:badge(item.state)}</div>`).join("")||`<p class="report-note">No driver compliance action needed.</p>`}</div></article>
+        <article class="card panel"><div class="panel-head"><div><h2>Driver defects</h2><p>${data.defects.filter(item=>!item.part3Complete&&item.status!=="Completed").length} outstanding</p></div><button class="link-btn" data-view="defects">View all →</button></div>
+          <div class="alert-list">${data.defects.filter(item=>!item.part3Complete&&item.status!=="Completed").slice(0,4).map(item=>`<div class="alert-item"><span class="alert-icon red">!</span><div class="alert-copy"><strong>${escapeHtml(item.id)} · ${displayReg(item.reg)}</strong><span>${escapeHtml(item.defect)} · ${escapeHtml(item.driver)}</span></div><span class="days-pill ${Math.max(0,-dayDelta(item.date))>=30?"overdue":""}">${Math.max(0,-dayDelta(item.date))} d</span></div>`).join("")||`<p class="report-note">No outstanding defects.</p>`}</div></article>
+        <article class="card panel"><div class="panel-head"><div><h2>New starters</h2><p>Next induction sign-offs</p></div><button class="link-btn" data-view="starters">View all →</button></div>
+          <div class="alert-list">${starterActions.map(item=>{const step=starterStep(item);return `<div class="alert-item"><span class="alert-icon">＋</span><div class="alert-copy"><strong>${escapeHtml(item.name)} · Step ${step.step} of 3</strong><span>${escapeHtml(step.label)} · due ${fmtDate(step.due)}</span></div>${ragBadge(step.due)}</div>`}).join("")||`<p class="report-note">No active inductions.</p>`}</div></article>
+        </div>`);
+    }
+    function renderVehicles() {
+      const filtered = data.vehicles.filter(vehicle => `${vehicle.reg} ${vehicle.make} ${vehicle.model} ${vehicle.type} ${vehicle.status} ${vehicle.provider||""}`.toLowerCase().includes(vehicleFilter.toLowerCase()));
+      content.innerHTML = `${pageHead("Vehicle register", "Manage fleet details, service status and upcoming inspections.", `<button class="btn" data-action="export">⇩ &nbsp;Export</button><button class="btn primary" data-action="add-vehicle">＋ &nbsp;Add vehicle</button>`)}
+        <div class="card table-card"><div class="table-toolbar"><p><strong>${data.vehicles.filter(vehicle=>vehicle.inFleet!==false).length}</strong> vehicles in the Tiverton fleet · ${data.vehicles.filter(vehicle=>vehicle.inFleet===false).length} retired</p><input class="filter-input" id="vehicle-filter" placeholder="Filter vehicles..." value="${escapeHtml(vehicleFilter)}"></div>
+        <div class="table-scroll"><table class="data-table"><thead><tr><th>Registration</th><th>Vehicle / provider</th><th>Type</th><th>Mileage (km)</th><th>Next PMI</th><th>Overall compliance</th><th>Status</th><th>Actions</th></tr></thead><tbody>
+        ${filtered.length ? filtered.map(vehicle=>`<tr><td><span class="reg">${displayReg(vehicle.reg)}</span></td><td>${escapeHtml(vehicle.make)} ${escapeHtml(vehicle.model)}<span class="subline">${escapeHtml(vehicle.provider||"No provider set")}</span></td><td>${escapeHtml(vehicle.type)}</td><td>${escapeHtml(vehicle.mileage)}</td><td>${fmtDate(vehicle.nextPmi)}</td><td>${ragBadge(vehicleRag(vehicle))}</td><td>${badge(vehicle.status)}</td><td><button class="row-link" data-vehicle="${escapeHtml(vehicle.reg)}">History</button> · <button class="row-link" data-action="log-check" data-reg="${escapeHtml(vehicle.reg)}">Log check</button></td></tr>`).join("") : `<tr><td colspan="8"><div class="empty-state">No vehicles match that filter.</div></td></tr>`}
+        </tbody></table></div></div>`;
+      document.getElementById("vehicle-filter").addEventListener("input", event => { vehicleFilter = event.target.value; renderVehicles(); focusEnd("vehicle-filter"); });
+    }
+    function renderDrivers() {
+      const filtered = data.drivers.filter(driver => driver.name!=="EXAMPLE DRIVER"&&`${driver.name} ${driver.id} ${driver.role} ${driver.status}`.toLowerCase().includes(driverFilter.toLowerCase()));
+      content.innerHTML = `${pageHead("Drivers", "A quick view of driver availability and card expiry dates.", `<button class="btn" data-action="export">⇩ &nbsp;Export</button><button class="btn primary" data-action="add-driver">＋ &nbsp;Add driver</button>`)}
+        <div class="notice"><span>ⓘ</span><span><strong>Expiry watch:</strong> Keep driver card and licence dates current so renewal reminders can be actioned before shifts are affected.</span></div>
+        <div class="card table-card"><div class="table-toolbar"><p><strong>${filtered.length}</strong> drivers shown · ${data.drivers.filter(driver=>driver.active!==false&&driver.name!=="EXAMPLE DRIVER").length} active</p><input class="filter-input" id="driver-filter" placeholder="Filter drivers..." value="${escapeHtml(driverFilter)}"></div>
+        <div class="table-scroll"><table class="data-table"><thead><tr><th>Driver</th><th>Driver ID</th><th>Licence class</th><th>Card expiry</th><th>CPC hours</th><th>Compliance</th><th>Driver status</th><th></th></tr></thead><tbody>
+        ${filtered.length ? filtered.map(driver=>{const hrs=cpcHours(driver.name);return `<tr><td><strong>${escapeHtml(driver.name)}</strong></td><td>${escapeHtml(driver.id)}</td><td>${escapeHtml(driver.role)}</td><td>${fmtDate(driver.cardExpiry)} ${ragBadge(driver.cardExpiry,true)}</td><td>${hrs.done}/${Number(data.config.cpcRequired||35)} h</td><td>${ragBadge(driverRag(driver))}${driver.notifiable?'<span class="subline">⚑ Notifiable DVLA condition</span>':""}</td><td>${badge(driver.active===false?"Archived":driver.status)}</td><td><button class="row-link" data-driver="${escapeHtml(driver.name)}">Profile</button></td></tr>`}).join("") : `<tr><td colspan="8"><div class="empty-state">No drivers match that filter.</div></td></tr>`}
+        </tbody></table></div></div>`;
+      document.getElementById("driver-filter").addEventListener("input", event => { driverFilter = event.target.value; renderDrivers(); focusEnd("driver-filter"); });
+    }
+    function weekStart(value) {
+      const date=parseLocalDate(value); if(!date) return null;
+      date.setDate(date.getDate()-((date.getDay()+6)%7)); return date;
+    }
+    function weekKey(value) {
+      const date=weekStart(value); if(!date) return "";
+      const thursday=new Date(date); thursday.setDate(thursday.getDate()+3);
+      const first=new Date(thursday.getFullYear(),0,4); const firstMon=weekStart(first);
+      return `${thursday.getFullYear()}-W${String(1+Math.round((date-firstMon)/604800000)).padStart(2,"0")}`;
+    }
+    function dateInWeek(value, start) {
+      const date=parseLocalDate(value); return date && date>=start && date<new Date(start.getFullYear(),start.getMonth(),start.getDate()+7);
+    }
+    function sameWeek(value, start) { return !!value && weekKey(value)===weekKey(toIso(start)); }
+    function dueOccurrences(vehicle, code, start, end) {
+      const intervalDays=Number(vehicle.intervalWeeks||data.config.pmiDefaultWeeks||10)*7;
+      const match=(date)=>date && date>=start && date<end;
+      if(code==="S"&&vehicle.pmiLast){
+        let next=parseLocalDate(vehicle.pmiLast); next.setDate(next.getDate()+intervalDays);
+        while(next<start) next.setDate(next.getDate()+intervalDays);
+        if(next<end) return true;
+      }
+      if(code==="TC"&&vehicle.tachoLast){
+        let next=parseLocalDate(vehicle.tachoLast); next=addMonths(toIso(next),Number(data.config.tachoMonths||24)); next=parseLocalDate(next);
+        while(next&&next<start){next=parseLocalDate(addMonths(toIso(next),Number(data.config.tachoMonths||24)));}
+        if(next&&next<end) return true;
+      }
+      const direct={M:vehicle.motDue,TL:vehicle.loler12,TS:vehicle.loler6};
+      if(direct[code]&&match(parseLocalDate(direct[code]))) return true;
+      const cycle={WC:["weighingLast",12],AC:["autolockLast",12]};
+      if(cycle[code]&&vehicle[cycle[code][0]]){
+        let next=parseLocalDate(addMonths(vehicle[cycle[code][0]],cycle[code][1]));
+        while(next&&next<start) next=parseLocalDate(addMonths(toIso(next),cycle[code][1]));
+        if(next&&next<end) return true;
+      }
+      return false;
+    }
+    function checkCode(item) {
+      const map={"PMI":"S","MOT Passed":"M","MOT Booked":"M","Tacho Calibration":"TC","LOLER 12-Month":"TL","LOLER 6-Month":"TS","Fire Extinguisher":"FE","Tax Renewed (6mo)":"TX","Tax Renewed (12mo)":"TX","Onboard Weighing Calibration":"WC","Autolock Calibration":"AC"};
+      return map[item.type]||"";
+    }
+    function checkStage(item) {
+      if(item.qcResult==="Fail") return 4;
+      if(item.filed) return 3;
+      if(item.documentReceived) return 2;
+      return 1;
+    }
+    function renderCalendar() {
+      const full=calendarFullFleet;
+      const vehicles=data.vehicles.filter(vehicle=>full?true:vehicle.inFleet!==false&&vehicle.active!==false);
+      const configured=parseLocalDate(data.config.calendarStart)||weekStart(DEMO_TODAY);
+      const start=weekStart(configured);
+      const weeks=Array.from({length:Math.min(106,Math.max(1,Number(data.config.calendarWeeks)||106))},(_,i)=>{const date=new Date(start);date.setDate(date.getDate()+7*i);return date;});
+      const codes=["V","S","M","TC","TSL","TL","TS","WC","AC","D"];
+      content.innerHTML=`${pageHead("Maintenance calendar","Weekly generated due-date and vehicle-status view.",`<button class="btn" data-action="calendar-print">▤ &nbsp;Print</button><button class="btn ${full?"primary":""}" data-action="calendar-toggle">${full?"Active fleet":"Full fleet"}</button>`)}
+        <div class="notice"><span>ⓘ</span><span>Generated from due dates, completed checks and status history. Cell codes are read-only; log checks or status changes to update the calendar.</span></div>
+        <div class="card panel" style="margin-bottom:14px"><div class="inline-actions"><span class="badge info">V · VOR</span><span class="badge info">S · PMI</span><span class="badge info">M · MOT</span><span class="badge info">TC · Tacho</span><span class="badge info">TL · LOLER 12mo</span><span class="badge info">TS · LOLER 6mo</span><span class="badge info">WC · Weighing</span><span class="badge info">AC · Autolock</span><span class="badge info">D · Retired</span><span class="badge good">Struck = completed · Blue = document received · Yellow = QC filed · Red = rejected</span></div></div>
+        <div class="card calendar-wrap"><table class="calendar-table"><thead><tr><th>Vehicle</th>${weeks.map((date,index)=>`<th class="${weekKey(toIso(date))===weekKey(toIso(DEMO_TODAY))?"current-week":""}" title="Week commencing ${fmtDate(toIso(date))}">${date.toLocaleDateString("en-GB",{day:"2-digit",month:"short"})}<br>W${weekKey(toIso(date)).split("W")[1]}</th>`).join("")}</tr></thead><tbody>
+        ${vehicles.map(vehicle=>`<tr><td><strong>${displayReg(vehicle.reg)}</strong></td>${weeks.map(startWeek=>{
+          const endWeek=new Date(startWeek);endWeek.setDate(endWeek.getDate()+7);
+          if(vehicle.inFleet===false)return `<td><span class="cal-code">D</span></td>`;
+          const vor=(data.statuses||[]).some(row=>row.reg===vehicle.reg&&row.status==="VOR (Off Road)"&&parseLocalDate(row.start)<endWeek&&(!row.end||parseLocalDate(row.end)>=startWeek));
+          if(vor)return `<td><span class="cal-code vor">V</span></td>`;
+          const isDue={S:dueOccurrences(vehicle,"S",startWeek,endWeek),M:dueOccurrences(vehicle,"M",startWeek,endWeek),TC:dueOccurrences(vehicle,"TC",startWeek,endWeek),TL:dueOccurrences(vehicle,"TL",startWeek,endWeek),TS:dueOccurrences(vehicle,"TS",startWeek,endWeek),WC:dueOccurrences(vehicle,"WC",startWeek,endWeek),AC:dueOccurrences(vehicle,"AC",startWeek,endWeek)};
+          const completed=data.checks.filter(item=>item.reg===vehicle.reg&&dateInWeek(item.date,startWeek)).map(item=>({code:checkCode(item),stage:checkStage(item)})).filter(item=>item.code);
+          const priority=["S","M","TC"];
+          let code=priority.find(key=>isDue[key]);
+          if(!code&&isDue.TL&&isDue.TS)code="TSL";
+          if(!code)code=["TL","TS","WC","AC"].find(key=>isDue[key]);
+          let stage=0;
+          if(!code&&completed.length){code=completed[0].code;stage=completed[0].stage;}
+          else if(code){const logged=data.checks.filter(item=>item.reg===vehicle.reg&&checkCode(item)===code&&dateInWeek(item.date,startWeek)).sort((a,b)=>dayDelta(b.date)-dayDelta(a.date));if(logged.length)stage=checkStage(logged[0]);}
+          if(code==="FE"||code==="TX")code="";
+          return `<td>${code?`<span class="cal-code stage-${stage}">${code}</span>`:""}</td>`;
+        }).join("")}</tr>`).join("")}
+        </tbody></table></div>`;
+    }
+    let calendarFullFleet=false;
+    function checkDueForType(vehicle,type,dateIso) {
+      if(type==="PMI") return addDays(dateIso,Number(vehicle.intervalWeeks||data.config.pmiDefaultWeeks||10)*7);
+      const months={"Tacho Calibration":Number(data.config.tachoMonths||24),"LOLER 6-Month":Number(data.config.loler6Months||6),"LOLER 12-Month":Number(data.config.loler12Months||12),"Fire Extinguisher":Number(data.config.fireMonths||12),"Onboard Weighing Calibration":12,"Autolock Calibration":12,"MOT Passed":12,"Tax Renewed (6mo)":6,"Tax Renewed (12mo)":12};
+      return months[type]?addMonths(dateIso,months[type]):"";
+    }
+    function renderChecks() {
+      const rows=[...data.checks].sort((a,b)=>dayDelta(b.date)-dayDelta(a.date));
+      content.innerHTML=`${pageHead("Completed checks","Check history and document-control stages for the fleet.",`<button class="btn primary" data-action="log-check">＋ &nbsp;Log completed check</button>`)}
+        <div class="notice"><span>ⓘ</span><span>Document received is required for every check. QC filing and result feed the maintenance calendar stage and the outstanding-QC list.</span></div>
+        <div class="card table-card"><div class="table-toolbar"><p><strong>${rows.length}</strong> check records · Dates use the Europe/London depot convention</p></div><div class="table-scroll"><table class="data-table"><thead><tr><th>Check</th><th>Vehicle</th><th>Completed</th><th>Next due set</th><th>Document received</th><th>QC filed</th><th>QC result</th><th>Logged by</th><th></th></tr></thead><tbody>
+        ${rows.map(item=>`<tr><td><strong>${escapeHtml(item.type)}</strong><span class="subline">${escapeHtml(item.id)}</span></td><td><span class="reg">${displayReg(item.reg)}</span></td><td>${fmtDate(item.date)}</td><td>${fmtDate(item.nextDue)}</td><td>${fmtDate(item.documentReceived)}</td><td>${fmtDate(item.filed)}</td><td>${badge(item.qcResult||"Not reviewed")}</td><td>${escapeHtml(item.loggedBy)}</td><td><button class="row-link" data-check="${escapeHtml(item.id)}">Update documents</button></td></tr>`).join("")}
+        </tbody></table></div></div>`;
+    }
+    function cpcHours(driverName) {
+      const rows=(data.courses||[]).filter(row=>row.driver===driverName&&!row.previous);
+      return {done:rows.filter(row=>dayDelta(row.date)<=0).reduce((sum,row)=>sum+Number(row.hours||0),0),booked:rows.filter(row=>dayDelta(row.date)>0).reduce((sum,row)=>sum+Number(row.hours||0),0)};
+    }
+    function cpcResult(driver,hours) {
+      if(!driver.cpcExpiry)return {state:"–",note:"No CPC expiry date recorded"};
+      const required=Number(data.config.cpcRequired||35),days=dayDelta(driver.cpcExpiry),total=hours.done+hours.booked;
+      if(hours.done>=required)return {state:"OK",note:`All ${required} hours completed`};
+      if(days<0)return {state:"OVERDUE",note:`CPC expired ${Math.abs(days)} days ago – only ${hours.done} of ${required}`};
+      if(days<=Number(data.config.cpcRed||90))return {state:"OVERDUE",note:`Only ${hours.done} of ${required} hours done, ${days} days to expiry`};
+      if(days<=Number(data.config.cpcAmber||365)&&total<required)return {state:"DUE SOON",note:`${required-total} hours still to book`};
+      return {state:"OK",note:hours.booked?`${hours.booked} hours booked`:"Hours not yet due"};
+    }
+    function renderCpc() {
+      const active=data.drivers.filter(driver=>driver.active!==false&&driver.name!=="EXAMPLE DRIVER");
+      content.innerHTML=`${pageHead("CPC hours","35 hours per five-year cycle · booked and completed courses.",`<button class="btn primary" data-action="add-course">＋ &nbsp;Log / book course</button>`)}
+        <div class="card table-card"><div class="table-toolbar"><p>Previous-cycle hours are excluded from the current cycle.</p></div><div class="table-scroll"><table class="data-table"><thead><tr><th>Driver</th><th>Expiry</th><th>Done</th><th>Booked</th><th>Required</th><th>CPC status</th><th>Courses</th><th></th></tr></thead><tbody>
+        ${active.map(driver=>{const hours=cpcHours(driver.name),result=cpcResult(driver,hours),rows=data.courses.filter(row=>row.driver===driver.name);return `<tr><td><strong>${escapeHtml(driver.name)}</strong><span class="subline">${escapeHtml(driver.id)}</span></td><td>${fmtDate(driver.cpcExpiry)}</td><td>${hours.done} h</td><td>${hours.booked} h</td><td>${Number(data.config.cpcRequired||35)} h</td><td>${badge(result.state)}<span class="subline">${escapeHtml(result.note)}</span></td><td>${rows.length}</td><td><button class="row-link" data-action="renew-cpc" data-driver="${escapeHtml(driver.name)}">New cycle</button></td></tr>`}).join("")}
+        </tbody></table></div></div>`;
+    }
+    function parseCsv(text) {
+      const rows=[];let row=[],cell="",quoted=false;
+      for(let i=0;i<text.length;i++){const char=text[i];if(char==='"'){if(quoted&&text[i+1]==='"'){cell+='"';i++;}else quoted=!quoted;}else if(char===","&&!quoted){row.push(cell);cell="";}else if((char==="\n"||char==="\r")&&!quoted){if(char==="\r"&&text[i+1]==="\n")i++;row.push(cell);if(row.some(value=>value.trim()))rows.push(row);row=[];cell="";}else cell+=char;}
+      if(cell.length||row.length){row.push(cell);if(row.some(value=>value.trim()))rows.push(row);}
+      return rows;
+    }
+    function normHeader(value) { return String(value||"").toLowerCase().replace(/[^a-z0-9]/g,""); }
+    function parseD28Date(value) {
+      const raw=String(value||"").trim();
+      const match=raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+      if(match)return `${match[3]}-${String(match[2]).padStart(2,"0")}-${String(match[1]).padStart(2,"0")}`;
+      return toIso(raw);
+    }
+    function parseD28Time(value) {
+      const match=String(value||"").match(/(?:^|\s)(\d{1,2}):(\d{2})(?::\d{2})?/);
+      return match?`${String(match[1]).padStart(2,"0")}:${match[2]}`:"";
+    }
+    function parseDuration(value) {
+      const text=String(value||"").trim();
+      const match=text.match(/^(\d{1,3}):(\d{2})$/);
+      return match?Number(match[1])*60+Number(match[2]):0;
+    }
+    function minutesText(minutes) { return `${String(Math.floor(minutes/60)).padStart(2,"0")}:${String(minutes%60).padStart(2,"0")}`; }
+    function matchDriver(name,number) {
+      const byId=data.drivers.find(driver=>number&&driver.id.toLowerCase()===number.toLowerCase());
+      if(byId)return byId;
+      const clean=String(name||"").replace(/\s*[*#].*$/,"").replace(/\s+\d{2,}\s*$/,"").trim().toLowerCase();
+      return data.drivers.find(driver=>driver.name.toLowerCase()===clean)||data.drivers.find(driver=>driver.name.toLowerCase().split(/\s+/).at(-1)===clean.split(/\s+/).at(-1)&&clean.length>3);
+    }
+    function importD28File(file) {
+      const reader=new FileReader();
+      reader.onerror=()=>toast("Could not read the selected D28 CSV file.");
+      reader.onload=()=>{
+        try{
+          const records=parseCsv(String(reader.result||""));if(records.length<2){toast("The CSV has no data rows.");return;}
+          const header=records[0].map(normHeader),column=label=>header.indexOf(normHeader(label));
+          const required=["Driver's Name","Driver Number","Date","Registration","Start Of Duty","End Of Duty","Rest"];
+          const missing=required.filter(label=>column(label)<0);
+          if(missing.length){toast(`D28 CSV is missing required columns: ${missing.join(", ")}.`);return;}
+          let added=0,skipped=0,unlinked=0;
+          for(const cells of records.slice(1)){
+            const get=label=>cells[column(label)]||"";
+            const rawReg=get("Registration").trim();
+            if(!rawReg||/^rest$/i.test(rawReg)){skipped++;continue;}
+            const iso=parseD28Date(get("Date"));if(!iso){skipped++;continue;}
+            const driver=matchDriver(get("Driver's Name"),get("Driver Number"));
+            const start=parseD28Time(get("Start Of Duty")),end=parseD28Time(get("End Of Duty"));
+            const rest=parseDuration(get("Rest"));
+            const startM=start?parseDuration(start):0,endM=end?parseDuration(end):0;
+            const duration=start&&end?(endM-startM+1440)%1440:0,check=0;
+            const working=Math.max(0,duration-rest-check);
+            const registration=rawReg.replace(/\s+/g," ").toUpperCase();
+            const statusText=registration.toLowerCase();
+            let category="";
+            if(/holiday|annual leave/.test(statusText))category="Holiday";
+            else if(/sick/.test(statusText))category="Sick";
+            else if(/compassionate leave/.test(statusText))category="Paid Leave";
+            const duplicate=data.tacho.some(item=>item.driverId===(driver?.id||get("Driver Number"))&&item.date===formattedDate(iso));
+            if(duplicate){skipped++;continue;}
+            const id=`TD-${Math.max(0,...data.tacho.map(item=>Number(item.id.split("-")[1])||0))+1}`;
+            const flag=driver?"":"Driver card not linked";
+            data.tacho.unshift({id,driver:driver?.name||`?${String(get("Driver's Name")).trim()}`,driverId:driver?.id||get("Driver Number"),date:formattedDate(iso),reg:category?"":normalizeReg(registration),start,end,rest:minutesText(rest),check:minutesText(check),working:category?"":minutesText(working),source:"D28",flag:category?category:flag,approval:"Pending",download:formattedDate(toIso(DEMO_TODAY)),category});
+            added++;if(!driver)unlinked++;
+          }
+          saveData();render();toast(`Imported ${added} D28 row(s); skipped ${skipped}${unlinked?`; ${unlinked} need driver linking`:""}.`);
+        }catch(error){console.error("D28 CSV import failed.",error);toast("The D28 CSV could not be processed. Check the file format.");}
+      };
+      reader.readAsText(file);
+    }
+    function renderTacho() {
+      const rows=[...data.tacho].sort((a,b)=>dayDelta(b.date)-dayDelta(a.date));
+      const pending=rows.filter(row=>row.approval==="Pending").length,unlinked=rows.filter(row=>!data.drivers.some(driver=>driver.id===row.driverId)).length;
+      const driverDownload=data.drivers.filter(driver=>driver.active!==false).filter(driver=>!driver.lastCardDownload||dayDelta(driver.lastCardDownload)<-Number(data.config.driverCardDays||28));
+      const grouped=data.drivers.filter(driver=>driver.active!==false).map(driver=>({driver,hours:rows.filter(row=>row.driver===driver.name&&row.category!=="Holiday"&&row.category!=="Sick"&&row.category!=="Paid Leave").reduce((sum,row)=>sum+parseDuration(row.working),0)}));
+      content.innerHTML=`${pageHead("Tachograph &amp; pay","Review card and D28 duty records before period reconciliation.",`<label class="btn" for="d28-file">⇧ &nbsp;Import D28 CSV</label><input id="d28-file" type="file" accept=".csv,text/csv" hidden><label class="btn" for="ddd-files">＋ &nbsp;Add .ddd files</label><input id="ddd-files" type="file" accept=".ddd" multiple hidden>`)}
+        <div class="notice"><span>ⓘ</span><span><strong>Prototype boundary:</strong> D28 CSV is parsed locally for preview. Driver-card .ddd files are binary and need the production server-side Gen1/Gen2 parser; choosing one here does not import or decode it.</span></div>
+        <div class="grid stats"><article class="card stat-card warning"><div class="stat-top">Days awaiting approval<span class="stat-icon">◷</span></div><div class="stat-value">${pending}</div></article><article class="card stat-card danger"><div class="stat-top">Unlinked duty rows<span class="stat-icon">!</span></div><div class="stat-value">${unlinked}</div></article><article class="card stat-card"><div class="stat-top">Cards not downloaded<span class="stat-icon">▣</span></div><div class="stat-value">${driverDownload.length}<span class="stat-meta">>${Number(data.config.driverCardDays||28)} days</span></div></article><article class="card stat-card"><div class="stat-top">Contract hours / week<span class="stat-icon">◷</span></div><div class="stat-value">${Number(data.config.contractHours||48)}<span class="stat-meta">weekly baseline</span></div></article></div>
+        <div class="card table-card"><div class="table-toolbar"><p><strong>Duty days</strong> · Select rows to approve or mark not paid. Approval locks this preview row against accidental edits.</p><div class="inline-actions"><button class="btn small" data-action="approve-tacho">Approve selected</button><button class="btn small ghost-danger" data-action="notpaid-tacho">Not paid</button></div></div><div class="table-scroll"><table class="data-table"><thead><tr><th><input type="checkbox" id="select-tacho" aria-label="Select all duty rows"></th><th>Driver / ID</th><th>Date</th><th>Vehicle</th><th>Start</th><th>End</th><th>Rest</th><th>Check</th><th>Working</th><th>Source / flags</th><th>Approval</th></tr></thead><tbody>
+        ${rows.map(row=>{const linked=data.drivers.some(driver=>driver.id===row.driverId);return `<tr><td><input type="checkbox" class="tacho-select" value="${escapeHtml(row.id)}" ${row.approval==="Pending"?"":"disabled"}></td><td><strong>${escapeHtml(row.driver)}</strong><span class="subline">${escapeHtml(row.driverId||"No driver link")} · ${escapeHtml(row.id)}</span></td><td>${fmtDate(row.date)}</td><td>${displayReg(row.reg)||escapeHtml(row.category||"—")}</td><td>${escapeHtml(row.start||"—")}</td><td>${escapeHtml(row.end||"—")}</td><td>${escapeHtml(row.rest||"—")}</td><td>${escapeHtml(row.check||"—")}</td><td>${escapeHtml(row.working||"—")}</td><td>${escapeHtml(row.source)}${row.flag?`<span class="subline">${escapeHtml(row.flag)}</span>`:""}${!linked?`<button class="row-link" data-tacho-link="${escapeHtml(row.id)}">Link driver</button>`:""}</td><td>${badge(row.approval)}</td></tr>`}).join("")}</tbody></table></div></div>
+        <div class="grid lower-grid" style="margin-top:16px"><article class="card panel"><div class="panel-head"><div><h2>Period-to-date hours</h2><p>Sample weekly hours; pay locking is not enabled in this prototype.</p></div></div><table class="mini-table"><thead><tr><th>Driver</th><th>Hours</th><th>Contract</th><th>Overtime</th></tr></thead><tbody>${grouped.map(item=>{const hours=item.hours/60,contract=Number(data.config.contractHours||48);return `<tr><td>${escapeHtml(item.driver.name)}</td><td>${hours.toFixed(2)}</td><td>${contract}</td><td>${Math.max(0,hours-contract).toFixed(2)}</td></tr>`}).join("")}</tbody></table></article><article class="card panel"><div class="panel-head"><div><h2>Driver-card imports</h2><p>Card download age and matching are reviewed before payroll.</p></div></div><p class="report-note">Driver cards are linked by the driver register and card number. The CSV upload supports D28 date, duty and leave rows; real .ddd parsing and employment-date enforcement need the server-side import service.</p><button class="btn small" data-view="drivers">Review driver links →</button></article></div>`;
+      document.getElementById("d28-file").addEventListener("change",event=>{if(event.target.files[0])importD28File(event.target.files[0]);});
+      document.getElementById("ddd-files").addEventListener("change",event=>{if(event.target.files.length)toast(`${event.target.files.length} .ddd file(s) selected. Binary parsing is not enabled in this local prototype.`);});
+      document.getElementById("select-tacho").addEventListener("change",event=>document.querySelectorAll(".tacho-select:not(:disabled)").forEach(input=>input.checked=event.target.checked));
+    }
+    function renderDefects() {
+      const rows=[...data.defects].sort((a,b)=>dayDelta(a.date)-dayDelta(b.date));
+      content.innerHTML=`${pageHead("Driver defects","Three-stage workflow: report → action → completion.",`<button class="btn primary" data-action="new-defect">＋ &nbsp;Report defect</button>`)}
+        <div class="notice"><span>ⓘ</span><span>Defect history is retained. A defect is completed only when the corrective action, job card reference and completion date are recorded.</span></div>
+        <div class="card table-card"><div class="table-toolbar"><p><strong>${rows.filter(row=>row.status!=="Completed").length}</strong> outstanding · ${rows.length} recorded</p></div><div class="table-scroll"><table class="data-table"><thead><tr><th>Ref</th><th>Reported</th><th>Vehicle</th><th>Driver</th><th>Defect</th><th>Age</th><th>Status</th><th>Job card</th><th></th></tr></thead><tbody>
+        ${rows.map(row=>{const age=Math.max(0,-dayDelta(row.date));return `<tr><td><strong>${escapeHtml(row.id)}</strong></td><td>${fmtDate(row.date)}</td><td><span class="reg">${displayReg(row.reg)}</span></td><td>${escapeHtml(row.driver)}</td><td>${escapeHtml(row.defect)}</td><td><span class="days-pill ${age>7?"overdue":""}">${age} d</span></td><td>${badge(row.status)}</td><td>${escapeHtml(row.jobCard||"—")}</td><td><button class="row-link" data-defect="${escapeHtml(row.id)}">Update</button></td></tr>`}).join("")}
+        </tbody></table></div></div>`;
+    }
+    function starterStep(starter) {
+      if(!starter.inductionDone)return {step:1,label:"Induction",due:addDays(starter.startDate,Number(data.config.inductionDays||14)),doneKey:"inductionDone"};
+      if(!starter.signOff1Done)return {step:2,label:"Sign Off 1 · 30 day",due:addDays(starter.inductionDone,Number(data.config.signOff1Days||30)),doneKey:"signOff1Done"};
+      if(!starter.signOff2Done)return {step:3,label:"Sign Off 2 · 60 day",due:addDays(starter.signOff1Done,Number(data.config.signOff2Days||30)),doneKey:"signOff2Done"};
+      return null;
+    }
+    function renderStarters() {
+      const rows=data.starters.filter(item=>starterStep(item)).sort((a,b)=>dayDelta(starterStep(a).due)-dayDelta(starterStep(b).due));
+      content.innerHTML=`${pageHead("New starters","Three sign-off stages are due from the previous completion date.",`<button class="btn primary" data-action="new-starter">＋ &nbsp;Add new starter</button>`)}
+        <div class="notice"><span>ⓘ</span><span>Adding a starter also creates an active driver if one does not already exist. Sign-off stages are sequential; later steps cannot be completed early.</span></div>
+        <div class="card table-card"><div class="table-toolbar"><p><strong>${rows.length}</strong> inductions still in progress</p></div><div class="table-scroll"><table class="data-table"><thead><tr><th>Starter</th><th>Start date</th><th>Current step</th><th>Due date</th><th>RAG</th><th>Completed so far</th><th></th></tr></thead><tbody>
+        ${rows.length?rows.map(row=>{const step=starterStep(row);return `<tr><td><strong>${escapeHtml(row.name)}</strong><span class="subline">${escapeHtml(row.id)}</span></td><td>${fmtDate(row.startDate)}</td><td>Step ${step.step} of 3 · ${escapeHtml(step.label)}</td><td>${fmtDate(step.due)}</td><td>${ragBadge(step.due)}</td><td>${[row.inductionDone&&"Induction",row.signOff1Done&&"Sign Off 1",row.signOff2Done&&"Sign Off 2"].filter(Boolean).join(" · ")||"Not started"}</td><td><button class="row-link" data-starter-step="${escapeHtml(row.id)}" data-step="${step.step}">Record sign-off</button></td></tr>`}).join(""):`<tr><td colspan="7"><div class="empty-state">All starters are fully signed off.</div></td></tr>`}
+        </tbody></table></div></div>`;
+    }
+    function renderSettings() {
+      const c=data.config;
+      content.innerHTML=`${pageHead("Configuration","Prototype settings. Rule values are applied consistently to dashboard calculations.",`<button class="btn" data-action="backup">⇩ &nbsp;Backup data</button>`)}
+        <div class="notice"><span>⚠</span><span>Changes are saved locally in this browser. In a production app, config changes must be admin-only and versioned in the audit log.</span></div>
+        <form id="settings-form"><div class="grid lower-grid">
+          <article class="card panel"><div class="panel-head"><div><h2>Compliance thresholds</h2><p>Dashboard RAG and expiry warning periods</p></div></div><div class="form-grid">
+            <div class="field"><label>Dashboard warning threshold (days)</label><input class="form-control" name="warningDays" type="number" min="0" value="${escapeHtml(c.warningDays)}"></div>
+            <div class="field"><label>Licence threshold (days; blank uses general)</label><input class="form-control" name="licenceDays" type="number" min="0" value="${escapeHtml(c.licenceDays)}"></div>
+            <div class="field"><label>Compliance chase days</label><input class="form-control" name="complianceDays" type="number" min="1" value="${escapeHtml(c.complianceDays)}"></div>
+            <div class="field"><label>Default PMI interval (weeks)</label><input class="form-control" name="pmiDefaultWeeks" type="number" min="1" value="${escapeHtml(c.pmiDefaultWeeks)}"></div>
+            <div class="field full"><label>Maintenance providers (comma separated)</label><textarea class="form-control" name="providers">${escapeHtml(c.providers)}</textarea></div>
+          </div></article>
+          <article class="card panel"><div class="panel-head"><div><h2>CPC &amp; calendar</h2><p>Cycle controls for dashboard and weekly view</p></div></div><div class="form-grid">
+            <div class="field"><label>CPC hours required</label><input class="form-control" name="cpcRequired" type="number" value="${escapeHtml(c.cpcRequired)}"></div>
+            <div class="field"><label>CPC amber window (days)</label><input class="form-control" name="cpcAmber" type="number" value="${escapeHtml(c.cpcAmber)}"></div>
+            <div class="field"><label>CPC red window (days)</label><input class="form-control" name="cpcRed" type="number" value="${escapeHtml(c.cpcRed)}"></div>
+            <div class="field"><label>Calendar weeks (max 106)</label><input class="form-control" name="calendarWeeks" type="number" min="1" max="106" value="${escapeHtml(c.calendarWeeks)}"></div>
+            <div class="field"><label>Calendar start (Monday)</label><input class="form-control" name="calendarStart" type="date" value="${toIso(c.calendarStart)}"></div>
+            <div class="field"><label>Tacho calibration interval (months)</label><input class="form-control" name="tachoMonths" type="number" value="${escapeHtml(c.tachoMonths)}"></div>
+            <div class="field"><label>Induction due after start (days)</label><input class="form-control" name="inductionDays" type="number" value="${escapeHtml(c.inductionDays)}"></div>
+            <div class="field"><label>Sign-off intervals (days)</label><div class="roller-grid"><label><span class="field-hint">30-day step</span><input class="form-control" name="signOff1Days" type="number" value="${escapeHtml(c.signOff1Days)}"></label><label><span class="field-hint">Next step</span><input class="form-control" name="signOff2Days" type="number" value="${escapeHtml(c.signOff2Days)}"></label></div></div>
+            <div class="field"><label>Weekly contract hours</label><input class="form-control" name="contractHours" type="number" value="${escapeHtml(c.contractHours)}"></div>
+            <div class="field"><label>Card download reminder (days)</label><input class="form-control" name="driverCardDays" type="number" value="${escapeHtml(c.driverCardDays)}"></div>
+          </div></article>
+          <article class="card panel"><div class="panel-head"><div><h2>Roller brake test limits</h2><p>Editable decision thresholds used by QC checks</p></div></div><div class="form-grid">
+            ${[["rbtAxleGood","Axle load good minimum (%)"],["rbtTestValid","Test invalid below load (%)"],["rbtImbalanceReview","Investigate imbalance above (%)"],["rbtImbalanceFail","Fail imbalance above (%)"],["rbtWheelEffort","Minimum wheel effort (% axle weight)"],["rbtService","Service efficiency minimum (%)"],["rbtSecondary","Secondary efficiency minimum (%)"],["rbtParking","Parking efficiency minimum (%)"],["rbtEfficiencyDrop","Investigate service drop (points)"]].map(([name,label])=>`<div class="field"><label>${label}</label><input class="form-control" name="${name}" type="number" min="0" value="${escapeHtml(c[name])}"></div>`).join("")}
+          </div></article>
+        </div><div style="display:flex;justify-content:flex-end;margin-top:15px"><button class="btn primary" type="submit">Save configuration</button></div></form>`;
+      document.getElementById("settings-form").addEventListener("submit",event=>{event.preventDefault();const form=new FormData(event.currentTarget);for(const key of ["warningDays","licenceDays","complianceDays","pmiDefaultWeeks","cpcRequired","cpcAmber","cpcRed","calendarWeeks","tachoMonths","inductionDays","signOff1Days","signOff2Days","contractHours","driverCardDays","rbtAxleGood","rbtTestValid","rbtImbalanceReview","rbtImbalanceFail","rbtWheelEffort","rbtService","rbtSecondary","rbtParking","rbtEfficiencyDrop"])data.config[key]=form.get(key)===""?"":Number(form.get(key));data.config.calendarStart=form.get("calendarStart");if(parseLocalDate(data.config.calendarStart)?.getDay()!==1){toast("Calendar start must be a Monday.");return;}data.config.providers=form.get("providers");saveData();render();toast("Configuration saved.");});
+    }
+    function focusEnd(id) {
+      const input = document.getElementById(id);
+      if (input) { input.focus(); input.setSelectionRange(input.value.length, input.value.length); }
+    }
+    function renderCompliance() {
+      const all=openComplianceRows();
+      const closed=data.issues.filter(issue=>issue.status==="Closed").map(issue=>({...issue,isQc:false,age:Math.max(0,-dayDelta(issue.date))}));
+      const list = complianceTab==="all"?[...all,...closed]:complianceTab==="open"?all:closed;
+      const open = all.length;
+      content.innerHTML = `${pageHead("PMI & compliance", "Track issues raised at inspection through maintainer response and close-out.", `<button class="btn" data-action="pmi-report">▤ &nbsp;PMI compliance report</button><button class="btn primary" data-action="new-issue">＋ &nbsp;Raise from PMI</button>`)}
+        <div class="section-tabs"><button data-tab="open" class="${complianceTab==="open"?"active":""}">Open issues <span class="badge warn">${open}</span></button><button data-tab="closed" class="${complianceTab==="closed"?"active":""}">Closed</button><button data-tab="all" class="${complianceTab==="all"?"active":""}">All records</button></div>
+        <div class="card table-card"><div class="table-toolbar"><p>Inspection findings and maintenance follow-up</p><span class="form-help">Select a record to review the full history and close-out.</span></div>
+        <div class="table-scroll"><table class="data-table"><thead><tr><th>Issue</th><th>Vehicle</th><th>Raised from PMI</th><th>Category</th><th>Issue</th><th>Maintainer</th><th>Status</th><th></th></tr></thead><tbody>
+        ${list.length ? list.sort((a,b)=>(b.age||0)-(a.age||0)).map(issue=>`<tr><td><strong>${escapeHtml(issue.id)}</strong></td><td><span class="reg">${displayReg(issue.reg)}</span></td><td>${escapeHtml(issue.date)}</td><td>${escapeHtml(issue.category)}</td><td>${escapeHtml(issue.issue)}</td><td>${escapeHtml(issue.maintainer)}</td><td>${badge(issue.isQc?issue.status:issue.status==="Closed"?"Closed":issue.response?"In progress":issue.age>Number(data.config.complianceDays||14)?"Overdue":issue.status)}</td><td>${issue.isQc?`<button class="row-link" data-qc-check="${escapeHtml(issue.checkId)}">Review docs</button>`:`<button class="row-link" data-issue="${escapeHtml(issue.id)}">Open</button>`}</td></tr>`).join("") : `<tr><td colspan="8"><div class="empty-state">No records in this view.</div></td></tr>`}
+        </tbody></table></div></div>`;
+      content.querySelectorAll("[data-tab]").forEach(button => button.addEventListener("click", () => { complianceTab = button.dataset.tab; renderCompliance(); }));
+    }
+    function renderQuality() {
+      const filtered = data.qc.filter(item => `${item.id} ${item.reg} ${item.inspector} ${item.result} ${item.roller}`.toLowerCase().includes(qcFilter.toLowerCase()));
+      content.innerHTML = `${pageHead("Quality checks", "Record inspections and roller brake tests against a vehicle.", `<button class="btn" data-action="export">⇩ &nbsp;Export log</button><button class="btn primary" data-action="new-qc">＋ &nbsp;New quality check</button>`)}
+        <div class="grid stats">
+          <article class="card stat-card"><div class="stat-top">Checks this week<span class="stat-icon">✓</span></div><div class="stat-value">${data.qc.length}<span class="stat-meta">logged</span></div></article>
+          <article class="card stat-card"><div class="stat-top">Passed<span class="stat-icon">◉</span></div><div class="stat-value">${data.qc.filter(item=>item.result==="Passed").length}<span class="stat-meta">checks passed</span></div></article>
+          <article class="card stat-card danger"><div class="stat-top">Action required<span class="stat-icon">!</span></div><div class="stat-value">${data.qc.filter(item=>item.result==="Action required").length}<span class="stat-meta">follow up</span></div></article>
+          <article class="card stat-card warning"><div class="stat-top">Roller brake retests<span class="stat-icon">↻</span></div><div class="stat-value">${data.qc.filter(item=>item.roller==="Retest"||item.roller==="Fail").length}<span class="stat-meta">open retest items</span></div></article>
+        </div>
+        <div class="card table-card"><div class="table-toolbar"><p><strong>Quality check log</strong> · Includes roller brake test results</p><input class="filter-input" id="qc-filter" placeholder="Filter checks..." value="${escapeHtml(qcFilter)}"></div>
+        <div class="table-scroll"><table class="data-table"><thead><tr><th>Check ID</th><th>Date</th><th>Vehicle</th><th>Inspector</th><th>Roller brake test</th><th>Overall result</th><th>Notes</th></tr></thead><tbody>
+        ${filtered.map(item=>`<tr><td><strong>${escapeHtml(item.id)}</strong></td><td>${escapeHtml(item.date)}</td><td><span class="reg">${displayReg(item.reg)}</span></td><td>${escapeHtml(item.inspector)}</td><td>${badge(item.roller)}</td><td>${badge(item.result)}</td><td>${escapeHtml(item.note)}</td></tr>`).join("")}
+        </tbody></table></div></div>`;
+      document.getElementById("qc-filter").addEventListener("input", event => { qcFilter = event.target.value; renderQuality(); focusEnd("qc-filter"); });
+    }
+    function toast(message) {
+      const node = document.createElement("div");
+      node.className = "toast"; node.textContent = message;
+      document.getElementById("toast-area").append(node);
+      setTimeout(() => node.remove(), 3200);
+    }
+    function openModal(title, subtitle, body, actions = "") {
+      modal.innerHTML = `<div class="modal-head"><div><h2 id="modal-title">${title}</h2><p>${subtitle}</p></div><button class="icon-btn" data-close aria-label="Close">×</button></div><div class="modal-body">${body}${actions ? `<div class="modal-foot">${actions}</div>` : ""}</div>`;
+      modalBackdrop.classList.add("open");
+      modal.querySelector("[data-close]").focus();
+    }
+    function closeModal() { modalBackdrop.classList.remove("open"); }
+    function openLogCheck(reg="") {
+      const options=data.vehicles.filter(vehicle=>vehicle.inFleet!==false).map(vehicle=>`<option value="${escapeHtml(vehicle.reg)}" ${vehicle.reg===normalizeReg(reg)?"selected":""}>${displayReg(vehicle.reg)} · ${escapeHtml(vehicle.make)} ${escapeHtml(vehicle.model)}</option>`).join("");
+      const types=["PMI","Tacho Calibration","LOLER 6-Month","LOLER 12-Month","Fire Extinguisher","MOT Passed","MOT Booked","Tax Renewed (6mo)","Tax Renewed (12mo)","Onboard Weighing Calibration","Autolock Calibration"];
+      openModal("Log completed check","Save the check, update next due and retain the document-control history.",`<form id="check-form"><div class="form-grid">
+        <div class="field"><label for="check-reg">Vehicle</label><select class="form-control" id="check-reg" required>${options}</select></div><div class="field"><label for="check-type">Check type</label><select class="form-control" id="check-type">${types.map(type=>`<option>${type}</option>`).join("")}</select></div>
+        <div class="field"><label for="check-date">Date completed</label><input class="form-control" id="check-date" type="date" required value="${toIso(DEMO_TODAY)}"></div><div class="field"><label for="check-mileage">Odometer (km)</label><input class="form-control" id="check-mileage" type="number" min="0"></div>
+        <div class="field"><label for="wheels-removed">Wheels removed? (PMI)</label><select class="form-control" id="wheels-removed"><option>No</option><option>Yes</option></select></div><div class="field"><label for="retorque-time">Retorque time</label><input class="form-control" id="retorque-time" type="time"></div>
+        <div class="field"><label for="retorque-by">Retorque verified by</label><input class="form-control" id="retorque-by"></div><div class="field"><label for="check-dtp">DTP number used</label><input class="form-control" id="check-dtp"></div>
+        <div class="field full"><label for="check-dtp-reason">Reason DTP was not used / other detail</label><input class="form-control" id="check-dtp-reason"></div>
+        <div class="field"><label for="doc-received">Document received date</label><input class="form-control" id="doc-received" type="date" required value="${toIso(DEMO_TODAY)}"></div><div class="field"><label for="check-qc">QC result</label><select class="form-control" id="check-qc"><option>Not reviewed</option><option>Pass</option><option>Part pass</option><option>Fail</option></select></div>
+        <div class="field full"><label for="check-notes">Notes</label><textarea class="form-control" id="check-notes"></textarea></div>
+        <div class="field full"><label for="check-compliance">Report compliance issue(s) from this PMI (one issue per line)</label><textarea class="form-control" id="check-compliance" placeholder="Add one compliance finding per line"></textarea></div>
+        <div class="field full"><label class="form-help"><input type="checkbox" id="check-wheels-hint"> Wheels removed requires odometer, retorque time and verifier. Retorque fields are cleared when wheels were not removed.</label></div>
+      </div></form>`,`<button class="btn" data-close>Cancel</button><button class="btn primary" data-save-check>Save check</button>`);
+      document.getElementById("wheels-removed").addEventListener("change",event=>{const disabled=event.target.value!=="Yes";document.getElementById("retorque-time").disabled=disabled;document.getElementById("retorque-by").disabled=disabled;if(disabled){document.getElementById("retorque-time").value="";document.getElementById("retorque-by").value="";}});
+      document.getElementById("wheels-removed").dispatchEvent(new Event("change"));
+      document.getElementById("check-type").addEventListener("change",event=>{const pmi=event.target.value==="PMI";["wheels-removed","retorque-time","retorque-by","check-compliance","check-dtp","check-dtp-reason"].forEach(id=>{document.getElementById(id).closest(".field").style.display=pmi?"":"none";});});
+    }
+    function openCheckDocument(id) {
+      const item=data.checks.find(row=>row.id===id);if(!item)return;
+      openModal("Update check document status",`${item.id} · ${item.reg} · ${item.type}`,`<form id="doc-form"><div class="form-grid"><div class="field"><label for="doc-date">Document received date (required)</label><input class="form-control" id="doc-date" type="date" required value="${toIso(item.documentReceived)}"></div><div class="field"><label for="filed-date">QC'd &amp; filed date</label><input class="form-control" id="filed-date" type="date" value="${toIso(item.filed)}"></div><div class="field"><label for="doc-result">QC result</label><select class="form-control" id="doc-result">${["Not reviewed","Pass","Part pass","Fail"].map(value=>`<option ${item.qcResult===value?"selected":""}>${value}</option>`).join("")}</select></div></div></form>`,`<button class="btn" data-close>Cancel</button><button class="btn primary" data-save-doc="${escapeHtml(id)}">Save document status</button>`);
+    }
+    function openDriver(name) {
+      const driver=data.drivers.find(item=>item.name===name);if(!driver)return;
+      const items=driverItems(driver);
+      openModal(`${escapeHtml(driver.name)} · ${escapeHtml(driver.id)}`,"Driver compliance profile · Edit dates or archive while retaining history.",`<div class="report-section"><h3>Compliance items</h3><div class="table-scroll"><table class="data-table"><thead><tr><th>Requirement</th><th>Due date</th><th>Status</th></tr></thead><tbody>${items.map(item=>`<tr><td>${escapeHtml(item[0])}</td><td>${fmtDate(item[1])}</td><td>${badge(item[4]||rag(item[1],item[2],item[3]))}</td></tr>`).join("")}</tbody></table></div></div>
+        <div class="report-section"><h3>CPC training history</h3>${data.courses.filter(row=>row.driver===driver.name).map(row=>`<p class="report-note">${escapeHtml(row.course)} · ${fmtDate(row.date)} · ${escapeHtml(row.hours)} h · ${row.previous?"Previous cycle":dayDelta(row.date)>0?"Booked":"Completed"}</p>`).join("")||`<p class="report-note">No CPC courses logged.</p>`}</div>
+        <div class="report-section"><h3>Reported defects</h3>${data.defects.filter(row=>row.driver===driver.name).map(row=>`<p class="report-note"><strong>${escapeHtml(row.id)}</strong> · ${displayReg(row.reg)} · ${escapeHtml(row.defect)} ${badge(row.status)}</p>`).join("")||`<p class="report-note">No defects recorded.</p>`}</div>
+        <form id="driver-form"><div class="form-grid"><div class="field"><label for="driver-name">Driver name</label><input class="form-control" id="driver-name" required value="${escapeHtml(driver.name)}"></div><div class="field"><label for="driver-id">Driver ID</label><input class="form-control" id="driver-id" required value="${escapeHtml(driver.id)}"></div>
+        ${[["licenceExpiry","Licence expiry"],["photoExpiry","Photo card expiry"],["cardExpiry","Tachograph card expiry"],["cpcExpiry","CPC card expiry"],["declarationDue","Declaration form due"],["eyesightDue","Eyesight test due"],["bridgeDue","Bridge strike training due"],["pg9Due","PG9 training due"],["assessmentDue","Driving assessment due"],["dgDue","Dangerous goods due"]].map(([key,label])=>`<div class="field"><label>${label}</label><input class="form-control" name="${key}" type="date" value="${toIso(driver[key])}"></div>`).join("")}
+        <div class="field"><label>Driver status</label><select class="form-control" name="active"><option value="true" ${driver.active!==false?"selected":""}>Active</option><option value="false" ${driver.active===false?"selected":""}>Archived</option></select></div><div class="field"><label>Notifiable DVLA condition?</label><select class="form-control" name="notifiable"><option value="false" ${!driver.notifiable?"selected":""}>No</option><option value="true" ${driver.notifiable?"selected":""}>Yes</option></select></div>
+        <div class="field full"><label>Condition details / notes</label><textarea class="form-control" name="condition">${escapeHtml(driver.condition||"")}</textarea></div></div></form>`,`<button class="btn" data-close>Cancel</button><button class="btn primary" data-save-driver-profile="${escapeHtml(name)}">Save profile</button>`);
+    }
+    function openCourse() {
+      const options=data.drivers.filter(driver=>driver.active!==false).map(driver=>`<option>${escapeHtml(driver.name)}</option>`).join("");
+      openModal("Log or book CPC course","Add completed hours or a future booked course.",`<form id="course-form"><div class="form-grid"><div class="field"><label for="course-driver">Driver</label><select class="form-control" id="course-driver" required>${options}</select></div><div class="field"><label for="course-name">Course</label><input class="form-control" id="course-name" required value="Driver CPC periodic training"></div><div class="field"><label for="course-date">Course date</label><input class="form-control" id="course-date" type="date" required></div><div class="field"><label for="course-hours">Hours</label><input class="form-control" id="course-hours" type="number" min="0.5" max="7" step="0.5" required value="7"></div><div class="field full"><label for="course-notes">Notes</label><input class="form-control" id="course-notes"></div></div></form>`,`<button class="btn" data-close>Cancel</button><button class="btn primary" data-save-course>Save course</button>`);
+    }
+    function openDefect() {
+      const vehicleOptions=data.vehicles.filter(vehicle=>vehicle.inFleet!==false).map(vehicle=>`<option value="${escapeHtml(vehicle.reg)}">${displayReg(vehicle.reg)}</option>`).join("");
+      openModal("Report a driver defect","Three-part record · Part 1: driver report.",`<form id="defect-form"><div class="form-grid"><div class="field"><label for="defect-reg">Vehicle</label><select class="form-control" id="defect-reg" required>${vehicleOptions}</select></div><div class="field"><label for="defect-driver">Driver</label><select class="form-control" id="defect-driver" required>${data.drivers.filter(driver=>driver.active!==false).map(driver=>`<option>${escapeHtml(driver.name)}</option>`).join("")}</select></div><div class="field"><label for="defect-date">Date reported</label><input class="form-control" id="defect-date" type="date" value="${toIso(DEMO_TODAY)}" required></div><div class="field"><label for="defect-time">Time reported</label><input class="form-control" id="defect-time" type="time" value="08:00"></div><div class="field"><label for="defect-source">Source</label><select class="form-control" id="defect-source"><option>Driver report</option><option>Found at PMI</option></select></div><div class="field" id="pmi-reference-field" style="display:none"><label for="defect-pmi">PMI reference date</label><select class="form-control" id="defect-pmi"><option value="">Choose logged PMI…</option></select></div><div class="field full"><label for="defect-description">Defect description</label><textarea class="form-control" id="defect-description" required></textarea></div></div></form>`,`<button class="btn" data-close>Cancel</button><button class="btn primary" data-save-defect>Report defect</button>`);
+      const regInput=document.getElementById("defect-reg"),pmiInput=document.getElementById("defect-pmi");
+      const refreshPmis=()=>{pmiInput.innerHTML=`<option value="">Choose logged PMI…</option>`+data.checks.filter(item=>item.reg===regInput.value&&item.type==="PMI").map(item=>`<option value="${toIso(item.date)}">${fmtDate(item.date)}</option>`).join("");};
+      regInput.addEventListener("change",refreshPmis);refreshPmis();
+      document.getElementById("defect-source").addEventListener("change",event=>{document.getElementById("pmi-reference-field").style.display=event.target.value==="Found at PMI"?"":"none";});
+    }
+    function openStarter() {
+      openModal("Add new starter","Creates the starter record and an active driver record if none exists.",`<form id="starter-form"><div class="form-grid"><div class="field"><label for="starter-name">Full name</label><input class="form-control" id="starter-name" required></div><div class="field"><label for="starter-date">Start date</label><input class="form-control" id="starter-date" type="date" required value="${toIso(DEMO_TODAY)}"></div></div></form>`,`<button class="btn" data-close>Cancel</button><button class="btn primary" data-save-starter>Add starter</button>`);
+    }
+    function openStarterSignoff(id,step) {
+      const row=data.starters.find(item=>item.id===id);if(!row)return;
+      const current=starterStep(row);if(!current||current.step!==Number(step))return;
+      openModal(`${current.label} sign-off`,`${row.name} · Step ${step} of 3`, `<form id="starter-signoff"><div class="form-grid"><div class="field"><label for="starter-completion">Completion date</label><input class="form-control" id="starter-completion" type="date" required value="${toIso(DEMO_TODAY)}"></div><div class="field"><label>Due date</label><input class="form-control" value="${toIso(current.due)}" disabled></div></div></form>`,`<button class="btn" data-close>Cancel</button><button class="btn primary" data-save-starter-step="${escapeHtml(id)}" data-step="${step}">Record sign-off</button>`);
+    }
+    function openTachoLink(id) {
+      const row=data.tacho.find(item=>item.id===id);if(!row)return;
+      openModal(`Link driver · ${escapeHtml(id)}`,`${escapeHtml(row.driver)} · ${fmtDate(row.date)}`,`<form id="tacho-link-form"><div class="field"><label for="tacho-link-driver">Match to the existing Drivers list</label><select class="form-control" id="tacho-link-driver" required><option value="">Choose driver…</option>${data.drivers.filter(driver=>driver.active!==false).map(driver=>`<option value="${escapeHtml(driver.id)}">${escapeHtml(driver.name)} · ${escapeHtml(driver.id)}</option>`).join("")}</select><span class="field-hint">Linking stores the existing driver name and number; it does not create a new driver record.</span></div></form>`,`<button class="btn" data-close>Cancel</button><button class="btn primary" data-save-tacho-link="${escapeHtml(id)}">Link driver</button>`);
+    }
+    function openDefectUpdate(id) {
+      const row=data.defects.find(item=>item.id===id);if(!row)return;
+      openModal(`Update defect · ${escapeHtml(id)}`,`${displayReg(row.reg)} · reported by ${escapeHtml(row.driver)}`,`<form id="defect-update"><div class="report-section"><h3>Part 1 · Report</h3><p class="report-note">${fmtDate(row.date)} ${escapeHtml(row.time||"")} · ${escapeHtml(row.source||"Driver report")} · ${escapeHtml(row.defect)}</p></div><div class="report-section"><h3>Part 2 · Action</h3></div><div class="form-grid"><div class="field"><label for="defect-job">Job card / work reference</label><input class="form-control" id="defect-job" value="${escapeHtml(row.jobCard)}"></div><div class="field"><label for="defect-provider">Provider</label><input class="form-control" id="defect-provider" value="${escapeHtml(row.provider||"")}"></div><div class="field full"><label for="defect-action">Action taken / planned</label><textarea class="form-control" id="defect-action">${escapeHtml(row.action)}</textarea></div><div class="field"><label for="defect-action-by">Action signed by</label><input class="form-control" id="defect-action-by" value="${escapeHtml(row.actionBy||"")}"></div><div class="field"><label for="defect-action-date">Action date</label><input class="form-control" id="defect-action-date" type="date" value="${toIso(row.actionDate)}"></div><div class="field full"><label for="defect-repair">Repair performed</label><textarea class="form-control" id="defect-repair">${escapeHtml(row.repair||"")}</textarea></div><div class="field"><label for="defect-repair-by">Repair signed by</label><input class="form-control" id="defect-repair-by" value="${escapeHtml(row.repairBy||"")}"></div></div><div class="report-section"><h3>Part 3 · Completion</h3></div><div class="form-grid"><div class="field"><label for="defect-done">Part 3 complete?</label><select class="form-control" id="defect-done"><option value="false" ${!row.part3Complete?"selected":""}>No</option><option value="true" ${row.part3Complete?"selected":""}>Yes</option></select></div><div class="field"><label for="defect-completed">Completion date</label><input class="form-control" id="defect-completed" type="date" value="${toIso(row.completed)}"></div></div></form>`,`<button class="btn" data-close>Cancel</button><button class="btn primary" data-save-defect-update="${escapeHtml(id)}">Save update</button>`);
+    }
+    function openStatus(reg) {
+      openModal(`Update vehicle status · ${displayReg(reg)}`,"Add a VOR/provider period or close open status periods by returning to active.",`<form id="status-form"><div class="form-grid"><div class="field"><label for="status-type">Status</label><select class="form-control" id="status-type"><option>VOR (Off Road)</option><option>With Maintenance Provider</option><option>Back to Active</option></select></div><div class="field"><label for="status-start">Date</label><input class="form-control" id="status-start" type="date" value="${toIso(DEMO_TODAY)}"></div><div class="field full"><label for="status-notes">Notes</label><textarea class="form-control" id="status-notes"></textarea></div></div></form>`,`<button class="btn" data-close>Cancel</button><button class="btn primary" data-save-status="${escapeHtml(reg)}">Save status</button>`);
+    }
+    function openEditVehicle(reg) {
+      const vehicle=data.vehicles.find(item=>item.reg===normalizeReg(reg));if(!vehicle)return;
+      const providers=(data.config.providers||"").split(",").map(value=>value.trim()).filter(Boolean);
+      const fields=[["pmiLast","PMI last completed"],["nextPmi","PMI next due"],["tachoLast","Tacho last calibration"],["tachoDue","Tacho next due"],["motDue","MOT expiry"],["taxDue","Tax due"],["loler6","LOLER 6-month due"],["loler12","LOLER 12-month due"],["fireDue","Fire extinguisher due"]];
+      openModal(`Edit vehicle · ${displayReg(vehicle.reg)}`,"Edit register fields. Retire by setting In Fleet to No; history is preserved.",`<form id="vehicle-edit"><div class="form-grid">
+        <div class="field"><label>Registration</label><input class="form-control" value="${displayReg(vehicle.reg)}" disabled></div><div class="field"><label>Vehicle type</label><select class="form-control" name="type">${["Rigid","Artic","Trailer","Van"].map(value=>`<option ${vehicle.type===value?"selected":""}>${value}</option>`).join("")}</select></div>
+        <div class="field"><label>Make</label><input class="form-control" name="make" required value="${escapeHtml(vehicle.make)}"></div><div class="field"><label>Model</label><input class="form-control" name="model" required value="${escapeHtml(vehicle.model)}"></div>
+        <div class="field"><label>PMI interval (weeks)</label><input class="form-control" name="intervalWeeks" type="number" min="1" required value="${Number(vehicle.intervalWeeks||data.config.pmiDefaultWeeks||10)}"></div><div class="field"><label>Mileage (km)</label><input class="form-control" name="mileage" type="number" min="0" value="${Number(String(vehicle.mileage||"").replace(/,/g,""))||0}"></div>
+        <div class="field"><label>Maintenance provider</label><select class="form-control" name="provider"><option value="">Not assigned</option>${providers.map(provider=>`<option ${vehicle.provider===provider?"selected":""}>${escapeHtml(provider)}</option>`).join("")}</select></div><div class="field"><label>Active rotation</label><select class="form-control" name="active"><option value="true" ${vehicle.active!==false?"selected":""}>Yes</option><option value="false" ${vehicle.active===false?"selected":""}>No (spare)</option></select></div>
+        <div class="field"><label>In fleet</label><select class="form-control" name="inFleet"><option value="true" ${vehicle.inFleet!==false?"selected":""}>Yes</option><option value="false" ${vehicle.inFleet===false?"selected":""}>No (retired)</option></select></div>
+        ${fields.map(([key,label])=>`<div class="field"><label>${label}</label><input class="form-control" name="${key}" type="date" value="${toIso(vehicle[key])}"></div>`).join("")}
+        <div class="field"><label>DTP number</label><input class="form-control" name="dtp" value="${escapeHtml(vehicle.dtp||"")}"></div></div></form>`,`<button class="btn" data-close>Cancel</button><button class="btn primary" data-save-vehicle-edit="${escapeHtml(vehicle.reg)}">Save vehicle</button>`);
+    }
+    function openIssue(id) {
+      const issue = data.issues.find(item => item.id === id);
+      if (!issue) return;
+      const isClosed = issue.status === "Closed";
+      const body = `<div class="report-section"><h3>PMI finding</h3><div class="report-meta"><div><span>Issue reference</span><strong>${escapeHtml(issue.id)}</strong></div><div><span>Vehicle</span><strong>${displayReg(issue.reg)}</strong></div><div><span>Raised from PMI</span><strong>${escapeHtml(issue.date)}</strong></div><div><span>Category</span><strong>${escapeHtml(issue.category)}</strong></div></div><p class="report-note" style="margin-top:10px">${escapeHtml(issue.issue)}</p></div>
+        <div class="report-section"><h3>Maintainer contact &amp; response</h3><div class="report-meta"><div><span>Contacted maintainer</span><strong>${escapeHtml(issue.maintainer || "Not recorded")}</strong></div><div><span>Current status</span><strong>${badge(issue.status)}</strong></div></div><p class="report-note" style="margin-top:9px">${escapeHtml(issue.response || "No response recorded yet.")}</p></div>
+        <div class="report-section"><h3>Close-out</h3>${isClosed ? `<div class="report-meta"><div><span>Work carried out</span><strong>${escapeHtml(issue.closeHow)}</strong></div><div><span>Evidence</span><strong>${escapeHtml(issue.evidence)}</strong></div><div><span>Close-out date</span><strong>${escapeHtml(issue.closeDate)}</strong></div></div>` : `<p class="form-help">The issue remains open until the repair method, supporting evidence and close-out date are recorded.</p>`}</div>`;
+      const buttons = isClosed ? `<button class="btn" data-close>Done</button>` : `<button class="btn" data-response="${escapeHtml(id)}">Log maintainer response</button><button class="btn primary" data-closeout="${escapeHtml(id)}">Record close-out</button>`;
+      openModal(`PMI issue · ${escapeHtml(id)}`, `${displayReg(issue.reg)} · ${escapeHtml(issue.category)}`, body, buttons);
+    }
+    function openResponse(id) {
+      const issue = data.issues.find(item=>item.id===id);
+      openModal("Log maintainer response", `${issue.id} · ${issue.reg}`, `<form id="response-form"><div class="form-grid"><div class="field"><label for="maintainer">Maintainer / garage</label><input class="form-control" id="maintainer" required value="${escapeHtml(issue.maintainer)}"></div><div class="field"><label for="contact-date">Contact date</label><input class="form-control" id="contact-date" type="date" required value="2026-10-19"></div><div class="field full"><label for="response">Response or repair plan</label><textarea class="form-control" id="response" required placeholder="What did the maintainer confirm? Include booking or parts details.">${escapeHtml(issue.response)}</textarea></div></div></form>`, `<button class="btn" data-close>Cancel</button><button class="btn primary" data-save-response="${escapeHtml(id)}">Save response</button>`);
+    }
+    function openCloseout(id) {
+      const issue = data.issues.find(item=>item.id===id);
+      openModal("Record issue close-out", `${issue.id} · ${issue.reg}`, `<form id="closeout-form"><div class="form-grid"><div class="field full"><label for="close-how">How was the issue resolved?</label><textarea class="form-control" id="close-how" required placeholder="Describe the repair or corrective action.">${escapeHtml(issue.closeHow)}</textarea></div><div class="field"><label for="close-evidence">Evidence / reference</label><input class="form-control" id="close-evidence" required placeholder="Invoice, job card, photo..." value="${escapeHtml(issue.evidence)}"></div><div class="field"><label for="close-date">Date completed</label><input class="form-control" id="close-date" type="date" required value="2026-10-19"></div></div></form><p class="form-help" style="margin-top:12px">This will mark the PMI finding as closed and include the recorded details in the PMI compliance report.</p>`, `<button class="btn" data-close>Cancel</button><button class="btn primary" data-save-closeout="${escapeHtml(id)}">Save &amp; close issue</button>`);
+    }
+    function openPmiReport() {
+      const rows = data.issues.map(issue=>`<tr><td>${escapeHtml(issue.id)}</td><td>${displayReg(issue.reg)}</td><td>${escapeHtml(issue.date)}</td><td>${escapeHtml(issue.category)}</td><td>${escapeHtml(issue.maintainer)}</td><td>${escapeHtml(issue.closeHow || issue.response || "Awaiting response")}</td><td>${escapeHtml(issue.evidence || "—")}</td><td>${escapeHtml(issue.closeDate || "Open")}</td><td>${escapeHtml(issue.status)}</td></tr>`).join("");
+      openModal("PMI compliance report", "Inspection findings, maintainer responses and close-out record", `<div class="notice"><span>▤</span><span>Prototype report view. Closed issues show repair method, evidence and completion date; open issues remain visible for follow-up.</span></div><div class="table-scroll"><table class="data-table"><thead><tr><th>Ref</th><th>Vehicle</th><th>PMI date</th><th>Category</th><th>Maintainer</th><th>Response / repair</th><th>Evidence</th><th>Close-out</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table></div>`, `<button class="btn" data-close>Close report</button><button class="btn primary" data-action="report-export">⇩ Export report</button>`);
+    }
+    function openNewIssue() {
+      const vehicleOptions = data.vehicles.map(vehicle=>`<option value="${escapeHtml(vehicle.reg)}">${displayReg(vehicle.reg)} · ${escapeHtml(vehicle.make)} ${escapeHtml(vehicle.model)}</option>`).join("");
+      openModal("Raise issue from PMI", "Log an inspection finding and assign it for maintenance follow-up.", `<form id="issue-form"><div class="form-grid"><div class="field"><label for="issue-reg">Vehicle</label><select class="form-control" id="issue-reg" required>${vehicleOptions}</select></div><div class="field"><label for="issue-date">PMI date</label><input class="form-control" id="issue-date" type="date" required value="2026-10-19"></div><div class="field"><label for="issue-category">Category</label><select class="form-control" id="issue-category"><option>Brakes</option><option>Tyres</option><option>Lighting</option><option>Steering</option><option>Bodywork</option><option>Other</option></select></div><div class="field"><label for="issue-maintainer">Maintainer to contact</label><input class="form-control" id="issue-maintainer" required value="Tiverton Commercials"></div><div class="field full"><label for="issue-description">Inspection finding</label><textarea class="form-control" id="issue-description" required placeholder="Describe the defect identified during PMI."></textarea></div></div></form>`, `<button class="btn" data-close>Cancel</button><button class="btn primary" data-save-issue>Raise issue</button>`);
+    }
+    function openNewQc() {
+      const vehicleOptions = data.vehicles.filter(vehicle=>vehicle.inFleet!==false).map(vehicle=>`<option value="${escapeHtml(vehicle.reg)}">${displayReg(vehicle.reg)} · ${escapeHtml(vehicle.make)} ${escapeHtml(vehicle.model)}</option>`).join("");
+      const check=data.checks.find(item=>item.type==="PMI"&&!item.filed);
+      openModal("New PMI quality-control check", "Review both PMI documents and record the roller-brake-test evidence.", `<form id="qc-form"><div class="form-grid">
+        <div class="field"><label for="qc-reg">Vehicle</label><select class="form-control" id="qc-reg" required>${vehicleOptions}</select></div><div class="field"><label for="qc-date">PMI date</label><input class="form-control" id="qc-date" type="date" required value="${toIso(DEMO_TODAY)}"></div>
+        <div class="field"><label for="qc-inspector">Reviewed / checked by</label><input class="form-control" id="qc-inspector" required value="Glyn Thomas"></div><div class="field"><label for="qc-condition">RBT test condition</label><select class="form-control" id="qc-condition"><option>Laden</option><option>Part laden</option><option>Unladen</option></select></div>
+        <div class="field full"><label>Part 1 · Fleet compliance document</label><div class="roller-grid">
+          ${["Document completed correctly","Defects completed and recorded","Tyres reported correctly","Inspector declaration signed","Second signature present","PMI date and ISO week correct","RBT recorded to standard","Defects linked","Tacho valid to next PMI","Wheel-removal retorque evidenced","QC stamp and filing"].map((label,index)=>`<label><span class="form-help">${label}</span><select class="form-control qc-answer" data-question="${index}"><option value="">Choose…</option><option>Yes</option><option>No</option><option>N/A</option></select></label>`).join("")}
+        </div></div>
+        <div class="field full"><label>Part 2 · Inspection review document</label><div class="roller-grid">
+          <label><span class="form-help">Tyres, wheels and brakes reviewed</span><select class="form-control" id="qc-review-tyres"><option value="">Choose…</option><option>Yes</option><option>No</option><option>N/A</option></select></label>
+          <label><span class="form-help">Body inspection sheet attached</span><select class="form-control" id="qc-review-body"><option value="">Choose…</option><option>Yes</option><option>No</option><option>N/A</option></select></label>
+          <label><span class="form-help">Manufacturer recall checked</span><select class="form-control" id="qc-recall"><option value="">Choose…</option><option>Yes</option><option>No</option></select></label>
+          <label><span class="form-help">QC result</span><select class="form-control" id="qc-result" required><option value="">Choose…</option><option>Pass</option><option>Fail</option><option>Part pass</option></select></label>
+        </div></div>
+        <div class="field full"><label>Part 3 · Roller brake test per axle</label><div class="roller-grid">
+          ${[1,2,3,4].map(axle=>`<label><span class="form-help">Axle ${axle} · design weight (kg)</span><input class="form-control" id="qc-design-${axle}" type="number" min="0"></label><label><span class="form-help">Axle ${axle} · test weight (kg)</span><input class="form-control" id="qc-load-${axle}" type="number" min="0"></label><label><span class="form-help">Axle ${axle} · LEFT max force (kg)</span><input class="form-control" id="qc-left-${axle}" type="number" min="0"></label><label><span class="form-help">Axle ${axle} · RIGHT max force (kg)</span><input class="form-control" id="qc-right-${axle}" type="number" min="0"></label><label><span class="form-help">Axle ${axle} · wheel lock</span><select class="form-control" id="qc-lock-${axle}"><option>None</option><option>Left</option><option>Right</option><option>Both</option></select></label>`).join("")}
+          <label><span class="form-help">Service efficiency (%)</span><input class="form-control" id="qc-service" type="number" min="0" max="100"></label><label><span class="form-help">Secondary efficiency (%)</span><input class="form-control" id="qc-secondary" type="number" min="0" max="100"></label><label><span class="form-help">Parking efficiency (%)</span><input class="form-control" id="qc-parking" type="number" min="0" max="100"></label><label><span class="form-help">DTP number on report</span><input class="form-control" id="qc-dtp"></label><label><span class="form-help">Brake bind over limit?</span><select class="form-control" id="qc-bind"><option>No</option><option>Yes</option></select></label><label><span class="form-help">Printout filed with PMI?</span><select class="form-control" id="qc-printout"><option>Yes</option><option>No</option></select></label>
+        </div><p id="qc-findings" class="form-help" style="margin-top:8px">Enter axle figures to see load and imbalance checks.</p></div>
+        <div class="field full"><label for="qc-note">Actions / notes</label><textarea class="form-control" id="qc-note" placeholder="Record findings, reasons, actions or agreed follow-up."></textarea></div>
+        <div class="field full"><label class="form-help"><span id="qc-progress">Answered 0 of 11 required checks</span></label></div>
+      </div></form>`, `<button class="btn" data-close>Cancel</button><button class="btn primary" data-save-qc>Save QC record</button>`);
+      const refresh=()=>{const answers=[...modal.querySelectorAll(".qc-answer")];const done=answers.filter(input=>input.value).length;document.getElementById("qc-progress").textContent=`Answered ${done} of ${answers.length} required checks`;const findings=[];for(let i=1;i<=4;i++){const design=Number(document.getElementById(`qc-design-${i}`).value||0),load=Number(document.getElementById(`qc-load-${i}`).value||0),left=Number(document.getElementById(`qc-left-${i}`).value||0),right=Number(document.getElementById(`qc-right-${i}`).value||0);if(design&&load){const pct=load/design*100;if(pct<Number(data.config.rbtTestValid||50))findings.push(`Axle ${i}: FAIL — test load under ${data.config.rbtTestValid||50}% of design`);else if(pct<Number(data.config.rbtAxleGood||65))findings.push(`Axle ${i}: INVESTIGATE — load below ${data.config.rbtAxleGood||65}% of design`);else if(pct>105)findings.push(`Axle ${i}: INVESTIGATE — over design load`);}if(left+right>0){const imbalance=Math.abs(left-right)/Math.max(left,right)*100;if(imbalance>Number(data.config.rbtImbalanceFail||30))findings.push(`Axle ${i}: FAIL — ${imbalance.toFixed(0)}% imbalance`);else if(imbalance>Number(data.config.rbtImbalanceReview||25))findings.push(`Axle ${i}: INVESTIGATE — ${imbalance.toFixed(0)}% imbalance`);if(Math.min(left,right)<(load*Number(data.config.rbtWheelEffort||5)/100))findings.push(`Axle ${i}: REVIEW — minimum wheel effort below ${data.config.rbtWheelEffort||5}% of axle load`);}}document.getElementById("qc-findings").textContent=findings.join(" · ")||"No axle load or imbalance warning from entered figures.";};
+      modal.querySelectorAll(".qc-answer, #qc-condition, input[type=number], #qc-dtp").forEach(input=>input.addEventListener("input",refresh));
+      document.getElementById("qc-reg").addEventListener("change",()=>{const chosen=data.checks.find(item=>item.reg===document.getElementById("qc-reg").value&&item.type==="PMI"&&!item.filed);if(chosen)document.getElementById("qc-date").value=toIso(chosen.date);});
+      if(check){document.getElementById("qc-reg").value=check.reg;document.getElementById("qc-date").value=toIso(check.date);}
+    }
+    function openAdd(type) {
+      if (type === "vehicle") {
+        const providers=(data.config.providers||"").split(",").map(value=>value.trim()).filter(Boolean);
+        openModal("Add vehicle", "Add a vehicle to the Tiverton fleet register.", `<form id="add-form"><div class="form-grid"><div class="field"><label for="add-reg">Registration</label><input class="form-control" id="add-reg" required placeholder="WX24 ABC"></div><div class="field"><label for="add-make">Make</label><input class="form-control" id="add-make" required></div><div class="field"><label for="add-model">Model</label><input class="form-control" id="add-model" required></div><div class="field"><label for="add-type">Vehicle type</label><select class="form-control" id="add-type"><option>Rigid</option><option>Artic</option><option>Trailer</option><option>Van</option></select></div><div class="field"><label for="add-mileage">Mileage (km)</label><input class="form-control" id="add-mileage" type="number" min="0" value="0"></div><div class="field"><label for="add-pmi-interval">PMI interval (weeks)</label><input class="form-control" id="add-pmi-interval" type="number" min="1" value="${Number(data.config.pmiDefaultWeeks||10)}" required></div><div class="field"><label for="add-provider">Maintenance provider</label><select class="form-control" id="add-provider"><option value="">Choose…</option>${providers.map(provider=>`<option>${escapeHtml(provider)}</option>`).join("")}</select></div><div class="field"><label for="add-pmi">Next PMI date (optional)</label><input class="form-control" id="add-pmi" type="date"></div></div></form>`, `<button class="btn" data-close>Cancel</button><button class="btn primary" data-save-vehicle>Add vehicle</button>`);
+      } else {
+        openModal("Add driver", "Add a driver record to the depot list.", `<form id="add-form"><div class="form-grid"><div class="field"><label for="add-name">Full name</label><input class="form-control" id="add-name" required></div><div class="field"><label for="add-id">Driver ID</label><input class="form-control" id="add-id" required placeholder="TV-130"></div><div class="field"><label for="add-role">Licence class</label><select class="form-control" id="add-role"><option>Class 1</option><option>Class 2</option></select></div><div class="field"><label for="add-card">Tachograph card expiry</label><input class="form-control" id="add-card" type="date"></div></div></form>`, `<button class="btn" data-close>Cancel</button><button class="btn primary" data-save-driver>Add driver</button>`);
+      }
+    }
+    function formattedDate(iso) {
+      if (!iso) return "";
+      const [year,month,day] = iso.split("-");
+      return `${day} ${new Date(Number(year),Number(month)-1,Number(day)).toLocaleString("en-GB",{month:"short"})} ${year}`;
+    }
+    function saveIssue() {
+      if (!document.getElementById("issue-form").reportValidity()) return;
+      const id = `PMI-${Math.max(0,...data.issues.map(issue=>Number(issue.id.split("-")[1])||0))+1}`;
+      const date = document.getElementById("issue-date").value;
+      data.issues.unshift({ id, reg: document.getElementById("issue-reg").value, date: formattedDate(date), category: document.getElementById("issue-category").value, issue: document.getElementById("issue-description").value.trim(), maintainer: document.getElementById("issue-maintainer").value.trim(), status: "Awaiting response", response: "", closeHow: "", evidence: "", closeDate: "" });
+      data.activity.unshift({ icon:"!", text:`<strong>PMI finding raised</strong> · ${escapeHtml(id)}`, time:"Just now" });
+      saveData(); closeModal(); render(); toast(`${id} raised for maintainer follow-up.`);
+    }
+    function saveQc() {
+      if (!document.getElementById("qc-form").reportValidity()) return;
+      const answers=[...modal.querySelectorAll(".qc-answer")];
+      if(answers.some(input=>!input.value)){toast("Answer each required Fleet Compliance question before saving.");answers.find(input=>!input.value)?.focus();return;}
+      const values={service:Number(document.getElementById("qc-service").value||0),secondary:Number(document.getElementById("qc-secondary").value||0),parking:Number(document.getElementById("qc-parking").value||0),condition:document.getElementById("qc-condition").value,dtp:document.getElementById("qc-dtp").value.trim(),bind:document.getElementById("qc-bind").value,printout:document.getElementById("qc-printout").value};
+      const vehicle=data.vehicles.find(item=>item.reg===document.getElementById("qc-reg").value);
+      let failed=values.bind==="Yes"||values.service<Number(data.config.rbtService||50)||values.secondary<Number(data.config.rbtSecondary||25)||values.parking<Number(data.config.rbtParking||16);
+      let investigate=values.condition!=="Laden"||values.printout==="No"||(!values.dtp)||(!vehicle.dtp)||values.dtp.toLowerCase()!==String(vehicle.dtp||"").toLowerCase()||values.service===0||values.secondary===0||values.parking===0;
+      const axles=[];
+      for(let i=1;i<=4;i++){
+        const design=Number(document.getElementById(`qc-design-${i}`).value||0),load=Number(document.getElementById(`qc-load-${i}`).value||0),left=Number(document.getElementById(`qc-left-${i}`).value||0),right=Number(document.getElementById(`qc-right-${i}`).value||0),lock=document.getElementById(`qc-lock-${i}`).value;
+        if(design||load||left||right){
+          const loadPct=design?load/design*100:null,imbalance=Math.max(left,right)?Math.abs(left-right)/Math.max(left,right)*100:null,effortPct=load?Math.min(left,right)/load*100:null;
+          if(design&&loadPct<Number(data.config.rbtTestValid||50)||imbalance!==null&&imbalance>Number(data.config.rbtImbalanceFail||30)||effortPct!==null&&effortPct<Number(data.config.rbtWheelEffort||5))failed=true;
+          if(design&&(loadPct<Number(data.config.rbtAxleGood||65)||loadPct>105)||imbalance!==null&&imbalance>Number(data.config.rbtImbalanceReview||25)||!design||lock!=="None")investigate=true;
+          axles.push({axle:i,designWeight:design||null,testWeight:load||null,leftForce:left||null,rightForce:right||null,lock,loadPercent:loadPct,imbalancePercent:imbalance,minEffortPercent:effortPct});
+        }
+      }
+      const roller=failed?"Fail":investigate?"Retest":"Pass";
+      const id = `QC-${String(Math.max(0,...data.qc.map(item=>Number(item.id.split("-")[1])||0))+1).padStart(4,"0")}`;
+      const date = formattedDate(document.getElementById("qc-date").value);
+      const review=document.getElementById("qc-result").value;
+      let result=review==="Fail"||roller==="Fail"?"Action required":review==="Part pass"||roller==="Retest"?"Follow-up":"Passed";
+      const note=document.getElementById("qc-note").value.trim()||`RBT ${values.condition}; service ${values.service||"not recorded"}%, secondary ${values.secondary||"not recorded"}%, parking ${values.parking||"not recorded"}%. ${axles.length} axle(s) entered.`;
+      const qcRecord={id,reg:vehicle.reg,date,inspector:document.getElementById("qc-inspector").value.trim(),result,roller,note,condition:values.condition,dtp:values.dtp,serviceEfficiency:values.service,secondaryEfficiency:values.secondary,parkingEfficiency:values.parking,bind:values.bind,printout:values.printout,axles,part1:Object.fromEntries(answers.map(input=>[input.dataset.question,input.value])),part2:{tyres:document.getElementById("qc-review-tyres").value,body:document.getElementById("qc-review-body").value,recall:document.getElementById("qc-recall").value}};
+      data.qc.unshift(qcRecord);
+      const linked=data.checks.find(item=>item.reg===vehicle.reg&&item.type==="PMI"&&item.date===date);
+      if(linked){linked.filed=formattedDate(toIso(DEMO_TODAY));linked.qcResult=result==="Passed"?"Pass":result==="Action required"?"Fail":"Part pass";}
+      saveData(); closeModal(); render(); toast(`${id} saved.`);
+    }
+    function openVehicle(reg) {
+      const vehicle = data.vehicles.find(item=>item.reg===reg);
+      const issues = data.issues.filter(item=>item.reg===reg);
+      const checks = data.qc.filter(item=>item.reg===reg);
+      const history=(data.checks||[]).filter(item=>item.reg===reg);
+      const statuses=(data.statuses||[]).filter(item=>item.reg===reg);
+      const defects=(data.defects||[]).filter(item=>item.reg===reg);
+      openModal(`${displayReg(vehicle.reg)} · ${escapeHtml(vehicle.make)} ${escapeHtml(vehicle.model)}`, "Vehicle history · Tiverton depot", `<div class="report-section"><h3>Vehicle details</h3><div class="report-meta"><div><span>Registration</span><strong>${displayReg(vehicle.reg)}</strong></div><div><span>Vehicle type / provider</span><strong>${escapeHtml(vehicle.type)} · ${escapeHtml(vehicle.provider||"—")}</strong></div><div><span>Mileage</span><strong>${escapeHtml(vehicle.mileage)} km</strong></div><div><span>Next PMI</span><strong>${fmtDate(vehicle.nextPmi)} · ${vehicle.intervalWeeks} week interval</strong></div><div><span>Current status</span><strong>${badge(vehicle.status)}</strong></div><div><span>Overall compliance</span><strong>${ragBadge(vehicleRag(vehicle))}</strong></div></div></div>
+        <div class="report-section"><h3>Completed checks (${history.length})</h3>${history.length?history.map(item=>`<p class="report-note" style="margin:7px 0"><strong>${escapeHtml(item.type)} · ${fmtDate(item.date)}</strong> · next due ${fmtDate(item.nextDue)} · document ${item.filed?"QC filed":item.documentReceived?"received":"outstanding"}</p>`).join(""):`<p class="report-note">No check history recorded.</p>`}</div>
+        <div class="report-section"><h3>VOR / provider periods (${statuses.length})</h3>${statuses.length?statuses.map(item=>`<p class="report-note" style="margin:7px 0">${escapeHtml(item.status)} · ${fmtDate(item.start)} to ${item.end?fmtDate(item.end):"open"} · ${escapeHtml(item.notes)}</p>`).join(""):`<p class="report-note">No status periods recorded.</p>`}</div>
+        <div class="report-section"><h3>Driver defects (${defects.length})</h3>${defects.length?defects.map(item=>`<p class="report-note" style="margin:7px 0"><strong>${escapeHtml(item.id)}</strong> · ${escapeHtml(item.defect)} · ${badge(item.status)} · Job ${escapeHtml(item.jobCard||"—")}</p>`).join(""):`<p class="report-note">No defects recorded.</p>`}</div>
+        <div class="report-section"><h3>PMI / compliance findings (${issues.length})</h3>${issues.length?issues.map(issue=>`<p class="report-note" style="margin:7px 0"><strong>${escapeHtml(issue.id)}</strong> · ${escapeHtml(issue.issue)} ${badge(issue.status)}</p>`).join(""):`<p class="report-note">No compliance items recorded.</p>`}</div>`, `<button class="btn" data-close>Close</button><button class="btn" data-action="edit-vehicle" data-reg="${escapeHtml(reg)}">Edit vehicle</button><button class="btn" data-action="set-status" data-reg="${escapeHtml(reg)}">Update status</button><button class="btn" data-action="log-check" data-reg="${escapeHtml(reg)}">Log completed check</button><button class="btn primary" data-action="new-issue">＋ Raise PMI finding</button>`);
+    }
+    document.querySelector(".nav").addEventListener("click", event => {
+      const button = event.target.closest("[data-view]");
+      if (button) setView(button.dataset.view);
+    });
+    content.addEventListener("click", event => {
+      const view = event.target.closest("[data-view]");
+      if (view) { setView(view.dataset.view); return; }
+      const issue = event.target.closest("[data-issue]");
+      if (issue) { openIssue(issue.dataset.issue); return; }
+      const qcCheck=event.target.closest("[data-qc-check]");
+      if(qcCheck){openCheckDocument(qcCheck.dataset.qcCheck);return;}
+      const vehicle = event.target.closest("[data-vehicle]");
+      if (vehicle) { openVehicle(vehicle.dataset.vehicle); return; }
+      const driver = event.target.closest("[data-driver]");
+      if (driver && !event.target.closest("[data-action]")) { openDriver(driver.dataset.driver); return; }
+      const check = event.target.closest("[data-check]");
+      if (check) { openCheckDocument(check.dataset.check); return; }
+      const defect = event.target.closest("[data-defect]");
+      if (defect) { openDefectUpdate(defect.dataset.defect); return; }
+      const tachoLink=event.target.closest("[data-tacho-link]");
+      if(tachoLink){openTachoLink(tachoLink.dataset.tachoLink);return;}
+      const starter=event.target.closest("[data-starter-step]");
+      if(starter){openStarterSignoff(starter.dataset.starterStep,starter.dataset.step);return;}
+      const action = event.target.closest("[data-action]")?.dataset.action;
+      if (action === "new-issue") openNewIssue();
+      else if (action === "new-qc") openNewQc();
+      else if (action === "add-vehicle") openAdd("vehicle");
+      else if (action === "add-driver") openAdd("driver");
+      else if (action === "pmi-report") openPmiReport();
+      else if (action === "export" || action === "report-export") toast("Export is a preview-only action in this prototype.");
+      else if (action === "activity") toast("Showing the latest depot activity.");
+      else if (action === "log-check") openLogCheck(event.target.closest("[data-reg]")?.dataset.reg||"");
+      else if (action === "set-status") openStatus(event.target.closest("[data-reg]")?.dataset.reg||"");
+      else if (action === "calendar-toggle") { calendarFullFleet=!calendarFullFleet; renderCalendar(); }
+      else if (action === "calendar-print") window.print();
+      else if (action === "add-course") openCourse();
+      else if (action === "new-defect") openDefect();
+      else if (action === "new-starter") openStarter();
+      else if (action === "renew-cpc") {
+        const name=event.target.closest("[data-driver]")?.dataset.driver;
+        if(name&&confirm(`Start a new CPC cycle for ${name}? Existing course rows will be marked Previous cycle.`)){data.courses.filter(row=>row.driver===name).forEach(row=>row.previous=true);saveData();render();toast("Previous cycle marked; new course hours will count toward the new cycle.");}
+      }
+      else if (action === "backup") { const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});const link=document.createElement("a");link.href=URL.createObjectURL(blob);link.download="tiverton-fleet-desk-backup.json";link.click();URL.revokeObjectURL(link.href);toast("Local backup exported."); }
+      else if(action==="approve-tacho"||action==="notpaid-tacho"){
+        const ids=[...document.querySelectorAll(".tacho-select:checked")].map(input=>input.value);
+        if(!ids.length){toast("Select one or more pending duty rows first.");return;}
+        const chosen=data.tacho.filter(row=>ids.includes(row.id)&&row.approval==="Pending");
+        if(action==="approve-tacho"&&chosen.some(row=>!data.drivers.some(driver=>driver.id===row.driverId))){toast("Unlinked duty days cannot be approved. Link the driver or mark those days Not paid.");return;}
+        chosen.forEach(row=>row.approval=action==="approve-tacho"?"Approved":"Not paid");
+        saveData();render();toast(`${chosen.length} duty day(s) set to ${action==="approve-tacho"?"Approved":"Not paid"}.`);
+      }
+    });
+    modal.addEventListener("click", event => {
+      if (event.target.closest("[data-close]")) { closeModal(); return; }
+      const response = event.target.closest("[data-response]");
+      if (response) { openResponse(response.dataset.response); return; }
+      const closeout = event.target.closest("[data-closeout]");
+      if (closeout) { openCloseout(closeout.dataset.closeout); return; }
+      if (event.target.closest("[data-save-response]")) {
+        const id = event.target.closest("[data-save-response]").dataset.saveResponse;
+        const form = document.getElementById("response-form");
+        if (!form.reportValidity()) return;
+        const issue = data.issues.find(item=>item.id===id);
+        issue.maintainer = document.getElementById("maintainer").value.trim();
+        issue.response = document.getElementById("response").value.trim();
+        issue.responseDate = formattedDate(document.getElementById("contact-date").value);
+        issue.status = "In progress";
+        saveData(); closeModal(); render(); toast("Maintainer response recorded.");
+      }
+      if (event.target.closest("[data-save-closeout]")) {
+        const id = event.target.closest("[data-save-closeout]").dataset.saveCloseout;
+        const form = document.getElementById("closeout-form");
+        if (!form.reportValidity()) return;
+        const issue = data.issues.find(item=>item.id===id);
+        issue.closeHow = document.getElementById("close-how").value.trim();
+        issue.evidence = document.getElementById("close-evidence").value.trim();
+        issue.closeDate = formattedDate(document.getElementById("close-date").value);
+        issue.status = "Closed";
+        saveData(); closeModal(); render(); toast("Close-out recorded and issue closed.");
+      }
+      if (event.target.closest("[data-save-issue]")) saveIssue();
+      if (event.target.closest("[data-save-qc]")) saveQc();
+      if (event.target.closest("[data-save-doc]")) {
+        const id=event.target.closest("[data-save-doc]").dataset.saveDoc;
+        const form=document.getElementById("doc-form");if(!form.reportValidity())return;
+        const row=data.checks.find(item=>item.id===id);
+        row.documentReceived=formattedDate(document.getElementById("doc-date").value);
+        row.filed=formattedDate(document.getElementById("filed-date").value);
+        row.qcResult=document.getElementById("doc-result").value==="Not reviewed"?"":document.getElementById("doc-result").value;
+        saveData();closeModal();render();toast("Check document status updated.");
+      }
+      if (event.target.closest("[data-save-check]")) {
+        const form=document.getElementById("check-form");if(!form.reportValidity())return;
+        const reg=document.getElementById("check-reg").value,type=document.getElementById("check-type").value,date=document.getElementById("check-date").value;
+        const vehicle=data.vehicles.find(item=>item.reg===reg);
+        const wheels=document.getElementById("wheels-removed").value;
+        const mileage=document.getElementById("check-mileage").value;
+        if(type==="PMI"&&wheels==="Yes"&&(!mileage||!document.getElementById("retorque-time").value||!document.getElementById("retorque-by").value.trim())){toast("For wheels removed, odometer, retorque time and verifier are all required.");return;}
+        if(mileage&&(!Number.isFinite(Number(mileage))||Number(mileage)<0)){toast("Odometer must be a valid non-negative number.");return;}
+        const nextDue=checkDueForType(vehicle,type,date);
+        const id=`CHK-${Math.max(0,...data.checks.map(item=>Number(item.id.split("-")[1])||0))+1}`;
+        const result=document.getElementById("check-qc").value;
+        const row={id,reg,type,date:formattedDate(date),nextDue,loggedBy:"Stephen",notes:document.getElementById("check-notes").value.trim(),documentReceived:formattedDate(document.getElementById("doc-received").value),filed:"",qcResult:result==="Not reviewed"?"":result,mileage:mileage?Number(mileage):null,wheelsRemoved:type==="PMI"?wheels:"",retorqueTime:type==="PMI"&&wheels==="Yes"?document.getElementById("retorque-time").value:"",retorqueBy:type==="PMI"&&wheels==="Yes"?document.getElementById("retorque-by").value.trim():"",dtp:type==="PMI"?document.getElementById("check-dtp").value.trim():"",dtpReason:type==="PMI"?document.getElementById("check-dtp-reason").value.trim():""};
+        data.checks.unshift(row);
+        if(type==="PMI"){
+          vehicle.pmiLast=row.date;vehicle.nextPmi=nextDue;if(mileage)vehicle.mileage=Number(mileage).toLocaleString("en-GB");
+          const lines=document.getElementById("check-compliance").value.split(/\r?\n/).map(line=>line.trim()).filter(Boolean);
+          if(!row.dtp&&!row.dtpReason)lines.push("No DTP number, or signed reason why not used, recorded at PMI.");
+          if(row.dtp&&vehicle.dtp&&normalizeDtp(row.dtp)!==normalizeDtp(vehicle.dtp))lines.push(`DTP recorded at PMI (${row.dtp}) does not match registered DTP (${vehicle.dtp}).`);
+          if(row.dtp&&!vehicle.dtp){
+            const duplicate=data.vehicles.find(item=>item.reg!==reg&&normalizeDtp(item.dtp)===normalizeDtp(row.dtp));
+            if(duplicate)lines.push(`DTP number ${row.dtp} is already registered to ${displayReg(duplicate.reg)}.`);
+            else if(confirm(`Register DTP ${row.dtp} to ${displayReg(reg)}?`))vehicle.dtp=row.dtp;
+            else lines.push(`DTP ${row.dtp} was entered at PMI but is not registered to this vehicle.`);
+          }
+          lines.forEach((line,index)=>{const newId=`PMI-${Math.max(0,...data.issues.map(item=>Number(item.id.split("-")[1])||0))+1}`;data.issues.unshift({id:newId,reg,date:row.date,category:"PMI review",issue:line,maintainer:vehicle.provider||"Not assigned",status:"Awaiting response",response:"",closeHow:"",evidence:"",closeDate:"",sourceCheck:id,line:index+1});});
+        }
+        else if(type==="MOT Passed")vehicle.motDue=nextDue;
+        else if(type==="MOT Booked")vehicle.motBooked=row.date;
+        else if(type.startsWith("Tax Renewed"))vehicle.taxDue=nextDue;
+        else if(type==="Tacho Calibration"){vehicle.tachoLast=row.date;vehicle.tachoDue=nextDue;}
+        else if(type==="LOLER 6-Month")vehicle.loler6=nextDue;
+        else if(type==="LOLER 12-Month")vehicle.loler12=nextDue;
+        else if(type==="Fire Extinguisher")vehicle.fireDue=nextDue;
+        else if(type==="Onboard Weighing Calibration")vehicle.weighingLast=row.date;
+        else if(type==="Autolock Calibration")vehicle.autolockLast=row.date;
+        data.activity.unshift({icon:"✓",text:`<strong>${escapeHtml(type)} logged</strong> for ${displayReg(reg)}`,time:"Just now"});
+        saveData();closeModal();render();toast(`${type} saved${nextDue?`; next due ${nextDue}`:""}.`);
+      }
+      if (event.target.closest("[data-save-driver-profile]")) {
+        const button=event.target.closest("[data-save-driver-profile]"),oldName=button.dataset.saveDriverProfile;
+        const form=document.getElementById("driver-form");if(!form.reportValidity())return;
+        const driver=data.drivers.find(item=>item.name===oldName),fd=new FormData(form);
+        const name=document.getElementById("driver-name").value.trim(),id=document.getElementById("driver-id").value.trim();
+        if(data.drivers.some(item=>item!==driver&&item.name.toLowerCase()===name.toLowerCase())){toast("A driver with that name already exists.");return;}
+        driver.name=name;driver.id=id;
+        ["licenceExpiry","photoExpiry","cardExpiry","cpcExpiry","declarationDue","eyesightDue","bridgeDue","pg9Due","assessmentDue","dgDue"].forEach(key=>driver[key]=fd.get(key)?formattedDate(fd.get(key)):"");
+        driver.active=fd.get("active")==="true";driver.status=driver.active?"Active":"Archived";driver.notifiable=fd.get("notifiable")==="true";driver.condition=fd.get("condition");
+        data.courses.forEach(row=>{if(row.driver===oldName)row.driver=name;});
+        data.training.forEach(row=>{if(row.driver===oldName)row.driver=name;});
+        saveData();closeModal();render();toast("Driver profile saved.");
+      }
+      if (event.target.closest("[data-save-course]")) {
+        const form=document.getElementById("course-form");if(!form.reportValidity())return;
+        const date=document.getElementById("course-date").value;
+        data.courses.unshift({driver:document.getElementById("course-driver").value,course:document.getElementById("course-name").value.trim(),date:formattedDate(date),hours:Number(document.getElementById("course-hours").value),previous:false,notes:document.getElementById("course-notes").value.trim()});
+        saveData();closeModal();render();toast("CPC course saved.");
+      }
+      if (event.target.closest("[data-save-defect]")) {
+        const form=document.getElementById("defect-form");if(!form.reportValidity())return;
+        const source=document.getElementById("defect-source").value,pmiDate=document.getElementById("defect-pmi").value;
+        if(source==="Found at PMI"&&!pmiDate){toast("Choose a logged PMI date for a defect found at PMI.");return;}
+        const n=Math.max(0,...data.defects.map(item=>Number(String(item.id).replace(/\D/g,""))||0))+1;
+        data.defects.unshift({id:`D${String(n).padStart(4,"0")}`,reg:document.getElementById("defect-reg").value,driver:document.getElementById("defect-driver").value,date:formattedDate(document.getElementById("defect-date").value),time:document.getElementById("defect-time").value,defect:document.getElementById("defect-description").value.trim(),status:"Outstanding",jobCard:"",action:"",actionBy:"",actionDate:"",provider:"",repair:"",repairBy:"",completed:"",part3Complete:false,source,pmiDate:pmiDate?formattedDate(pmiDate):""});
+        saveData();closeModal();render();toast("Driver defect reported.");
+      }
+      if(event.target.closest("[data-save-starter]")){
+        const form=document.getElementById("starter-form");if(!form.reportValidity())return;
+        const name=document.getElementById("starter-name").value.trim(),date=document.getElementById("starter-date").value;
+        if(data.starters.some(item=>item.name.toLowerCase()===name.toLowerCase())){toast("A starter with that name is already recorded.");return;}
+        const id=`NS-${String(Math.max(0,...data.starters.map(item=>Number(item.id.split("-")[1])||0))+1).padStart(3,"0")}`;
+        data.starters.unshift({id,name,startDate:formattedDate(date),inductionDone:"",signOff1Done:"",signOff2Done:""});
+        if(!data.drivers.some(driver=>driver.name.toLowerCase()===name.toLowerCase()))data.drivers.push({name,id:`TV-${String(130+data.drivers.length).padStart(3,"0")}`,role:"Class 2",status:"Active",active:true,notifiable:false,notes:"New starter – add licence/card/training dates via Edit / Archive Driver",cardExpiry:"",licenceExpiry:"",photoExpiry:"",cpcExpiry:"",lastShift:"No shift recorded"});
+        saveData();closeModal();render();toast(`${name} added to new starters.`);
+      }
+      if(event.target.closest("[data-save-starter-step]")){
+        const id=event.target.closest("[data-save-starter-step]").dataset.saveStarterStep,step=Number(event.target.closest("[data-save-starter-step]").dataset.step),form=document.getElementById("starter-signoff");if(!form.reportValidity())return;
+        const row=data.starters.find(item=>item.id===id),current=starterStep(row);if(!current||current.step!==step){toast("Complete the previous induction step first.");return;}
+        const date=document.getElementById("starter-completion").value,previous=step===1?row.startDate:step===2?row.inductionDone:row.signOff1Done;if(dayDelta(date)<0){toast("The sign-off date cannot be in the future.");return;}if(parseLocalDate(date)<parseLocalDate(previous)){toast("A sign-off cannot be dated before the previous stage was completed.");return;}
+        row[current.doneKey]=formattedDate(date);saveData();closeModal();render();toast(`${current.label} recorded for ${row.name}.`);
+      }
+      if(event.target.closest("[data-save-tacho-link]")){
+        const id=event.target.closest("[data-save-tacho-link]").dataset.saveTachoLink,form=document.getElementById("tacho-link-form");if(!form.reportValidity())return;
+        const row=data.tacho.find(item=>item.id===id),driver=data.drivers.find(item=>item.id===document.getElementById("tacho-link-driver").value);
+        row.driver=driver.name;row.driverId=driver.id;row.flag=String(row.flag||"").replace("Driver card not linked","").trim();
+        if(!row.flag&&row.category)row.flag=row.category;
+        saveData();closeModal();render();toast(`Duty day linked to ${driver.name}.`);
+      }
+      if (event.target.closest("[data-save-defect-update]")) {
+        const id=event.target.closest("[data-save-defect-update]").dataset.saveDefectUpdate,form=document.getElementById("defect-update");if(!form.reportValidity())return;
+        const row=data.defects.find(item=>item.id===id),done=document.getElementById("defect-done").value==="true",completed=document.getElementById("defect-completed").value;
+        if(done&&(!completed||!document.getElementById("defect-job").value.trim())){toast("Part 3 requires a completion date and job card number.");return;}
+        row.jobCard=document.getElementById("defect-job").value.trim();row.provider=document.getElementById("defect-provider").value.trim();row.action=document.getElementById("defect-action").value.trim();row.actionBy=document.getElementById("defect-action-by").value.trim();row.actionDate=document.getElementById("defect-action-date").value?formattedDate(document.getElementById("defect-action-date").value):"";row.repair=document.getElementById("defect-repair").value.trim();row.repairBy=document.getElementById("defect-repair-by").value.trim();row.part3Complete=done;row.completed=completed?formattedDate(completed):"";row.status=done?"Completed":row.action||row.repair?"In progress":"Outstanding";
+        saveData();closeModal();render();toast(done?"Defect marked COMPLETE.":"Defect update saved.");
+      }
+      if (event.target.closest("[data-save-status]")) {
+        const reg=event.target.closest("[data-save-status]").dataset.saveStatus,form=document.getElementById("status-form");if(!form.reportValidity())return;
+        const status=document.getElementById("status-type").value,date=formattedDate(document.getElementById("status-start").value),vehicle=data.vehicles.find(item=>item.reg===reg);
+        if(status==="Back to Active"){const open=data.statuses.filter(item=>item.reg===reg&&!item.end);if(!open.length){toast("There is nothing to close for this vehicle.");return;}open.forEach(item=>item.end=date);vehicle.status="In service";}
+        else{data.statuses.push({reg,status,start:date,end:"",notes:document.getElementById("status-notes").value.trim(),loggedBy:"Stephen"});vehicle.status=status==="VOR (Off Road)"?"VOR":"Workshop";}
+        saveData();closeModal();render();toast("Vehicle status history updated.");
+      }
+      if(event.target.closest("[data-save-vehicle-edit]")){
+        const reg=event.target.closest("[data-save-vehicle-edit]").dataset.saveVehicleEdit,form=document.getElementById("vehicle-edit");if(!form.reportValidity())return;
+        const vehicle=data.vehicles.find(item=>item.reg===reg),fd=new FormData(form);
+        for(const key of ["type","make","model","provider","dtp"])vehicle[key]=String(fd.get(key)||"").trim();
+        vehicle.intervalWeeks=Number(fd.get("intervalWeeks"));vehicle.mileage=Number(fd.get("mileage")||0).toLocaleString("en-GB");vehicle.active=fd.get("active")==="true";vehicle.inFleet=fd.get("inFleet")==="true";
+        for(const key of ["pmiLast","nextPmi","tachoLast","tachoDue","motDue","taxDue","loler6","loler12","fireDue"])vehicle[key]=fd.get(key)?formattedDate(fd.get(key)):"";
+        saveData();closeModal();render();toast(`${displayReg(reg)} vehicle record updated.`);
+      }
+      if (event.target.closest("[data-save-vehicle]")) {
+        const form = document.getElementById("add-form");
+        if (!form.reportValidity()) return;
+        const reg = normalizeReg(document.getElementById("add-reg").value);
+        if (data.vehicles.some(vehicle=>normalizeReg(vehicle.reg)===reg)) { document.getElementById("add-reg").setCustomValidity("This registration is already on the fleet register."); form.reportValidity(); document.getElementById("add-reg").setCustomValidity(""); return; }
+        const nextPmi=document.getElementById("add-pmi").value;
+        data.vehicles.push({ reg, make:document.getElementById("add-make").value.trim(), model:document.getElementById("add-model").value.trim(), type:document.getElementById("add-type").value, mileage:Number(document.getElementById("add-mileage").value||0).toLocaleString("en-GB"), nextPmi:nextPmi?formattedDate(nextPmi):"", status:"In service", active:true, inFleet:true, intervalWeeks:Number(document.getElementById("add-pmi-interval").value||data.config.pmiDefaultWeeks||10), provider:document.getElementById("add-provider").value, pmiLast:"", tachoDue:"", motDue:"", taxDue:"", loler6:"", loler12:"", fireDue:"", weighingLast:"", autolockLast:"", tachoLast:"", dtp:"" });
+        saveData(); closeModal(); render(); toast(`${displayReg(reg)} added to the vehicle register.`);
+      }
+      if (event.target.closest("[data-save-driver]")) {
+        const form = document.getElementById("add-form");
+        if (!form.reportValidity()) return;
+        const id = document.getElementById("add-id").value.trim().toUpperCase();
+        if (data.drivers.some(driver=>driver.id.toUpperCase()===id)) { document.getElementById("add-id").setCustomValidity("This driver ID is already in use."); form.reportValidity(); document.getElementById("add-id").setCustomValidity(""); return; }
+        data.drivers.push({ name:document.getElementById("add-name").value.trim(), id, role:document.getElementById("add-role").value, status:"Active", active:true, notifiable:false, cardExpiry:document.getElementById("add-card").value?formattedDate(document.getElementById("add-card").value):"", licenceExpiry:"",photoExpiry:"",cpcExpiry:"", lastShift:"No shift recorded" });
+        saveData(); closeModal(); render(); toast("Driver added.");
+      }
+      const modalAction = event.target.closest("[data-action]")?.dataset.action;
+      if (modalAction === "new-issue") openNewIssue();
+      if (modalAction === "log-check") openLogCheck(event.target.closest("[data-reg]")?.dataset.reg||"");
+      if (modalAction === "set-status") openStatus(event.target.closest("[data-reg]")?.dataset.reg||"");
+      if (modalAction === "edit-vehicle") openEditVehicle(event.target.closest("[data-reg]")?.dataset.reg||"");
+      if (modalAction === "report-export") toast("Report export is a preview-only action.");
+    });
+    modalBackdrop.addEventListener("click", event => { if (event.target === modalBackdrop) closeModal(); });
+    document.addEventListener("keydown", event => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") { event.preventDefault(); document.getElementById("global-search").focus(); }
+      if (event.key === "Escape") { closeModal(); document.getElementById("search-results").classList.remove("open"); }
+    });
+    const search = document.getElementById("global-search");
+    const searchResults = document.getElementById("search-results");
+    search.addEventListener("input", () => {
+      const q = search.value.trim().toLowerCase();
+      if (!q) { searchResults.classList.remove("open"); return; }
+      const results = [
+        ...data.vehicles.filter(item=>`${item.reg} ${displayReg(item.reg)} ${item.make} ${item.model}`.toLowerCase().includes(q)).map(item=>({title:displayReg(item.reg),sub:`Vehicle · ${item.make} ${item.model}`,view:"vehicles",reg:item.reg})),
+        ...data.drivers.filter(item=>`${item.name} ${item.id}`.toLowerCase().includes(q)).map(item=>({title:item.name,sub:`Driver · ${item.id}`,view:"drivers"})),
+        ...data.issues.filter(item=>`${item.id} ${item.reg} ${displayReg(item.reg)} ${item.issue} ${item.category}`.toLowerCase().includes(q)).map(item=>({title:item.id,sub:`PMI issue · ${displayReg(item.reg)} · ${item.issue}`,view:"compliance",issue:item.id})),
+        ...data.defects.filter(item=>`${item.id} ${item.reg} ${item.defect} ${item.driver}`.toLowerCase().includes(q)).map(item=>({title:item.id,sub:`Driver defect · ${displayReg(item.reg)} · ${item.defect}`,view:"defects",defect:item.id})),
+        ...data.checks.filter(item=>`${item.id} ${item.reg} ${item.type}`.toLowerCase().includes(q)).map(item=>({title:item.id,sub:`Completed ${item.type} · ${displayReg(item.reg)}`,view:"checks",check:item.id}))
+      ].slice(0,8);
+      searchResults.innerHTML = results.length ? results.map((item,index)=>`<button class="search-result" data-result="${index}"><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(item.sub)}</span></button>`).join("") : `<div class="empty-state">No matching fleet records.</div>`;
+      searchResults.classList.add("open");
+      searchResults.querySelectorAll("[data-result]").forEach(button=>button.addEventListener("click",()=>{
+        const item=results[Number(button.dataset.result)]; searchResults.classList.remove("open"); search.value="";
+        if(item.issue){setView("compliance");openIssue(item.issue);}else if(item.defect){setView("defects");openDefectUpdate(item.defect);}else if(item.check){setView("checks");openCheckDocument(item.check);}else if(item.reg){setView("vehicles");openVehicle(item.reg);}else setView(item.view);
+      }));
+    });
+    document.addEventListener("click", event => { if (!event.target.closest(".search-wrap")) searchResults.classList.remove("open"); });
+    render();
+  </script>
+</body>
+</html>
